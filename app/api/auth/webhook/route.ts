@@ -31,6 +31,10 @@ export async function POST(req: NextRequest) {
   hasCompletedOnboarding: false,           // <-- default to false
   isApproved: false,
   createdAt: Date.now(),
+  selfieUrl: undefined,            // v.optional(v.string())
+idUrl: undefined,                // v.optional(v.string())
+ isSubscribed: undefined,             // v.optional(v.boolean()) - safest to pass the default type
+subscriptionPlan: undefined,
 };
 
 
@@ -54,7 +58,8 @@ export async function POST(req: NextRequest) {
 
     return new Response('Webhook received', { status: 200 });
   } catch (err) {
-    console.error('Error verifying webhook:', err);
-    return new Response('Error verifying webhook', { status: 400 });
+    console.error('CRITICAL: Error processing webhook. This is likely a Convex validation error or connection issue.', err);
+ // Return 500 to signal failure and stop Clerk retries until the error is fixed
+return new Response('Internal Webhook Error', { status: 500 });
   }
 }
