@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "@/components/ui/providers/convex-provider";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Toaster } from "@/components/ui/sonner";
+import { LayoutContent } from "./client-layout"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,16 +27,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider dynamic>
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+    <html lang="en" suppressHydrationWarning>
+      <body 
+        className={`${geistSans.variable} ${geistMono.variable} antialiased m-0 p-0`}
+        suppressHydrationWarning
       >
-        <ConvexClientProvider>
-          {children}
-        </ConvexClientProvider>
+        <ClerkProvider dynamic>
+          <ConvexClientProvider>
+            <LayoutContent>
+              {children}
+            </LayoutContent>
+          </ConvexClientProvider>
+          <Toaster theme="dark" position="bottom-right" />
+        </ClerkProvider>
       </body>
     </html>
-    </ClerkProvider>
   );
 }

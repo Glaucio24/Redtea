@@ -1,29 +1,67 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
 import { api } from "@/convex/_generated/api"
 import { useMutation, useQuery } from "convex/react"
+import type { Id } from "@/convex/_generated/dataModel"
 
-import type { Id } from "@/convex/_generated/dataModel" 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertTriangle, CheckCircle, XCircle, Eye, Users, Search } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { CheckCircle, XCircle } from "lucide-react"
 
-// Define the type for the user data returned by your Convex query
+// --- Lightbox Component ---
+function Lightbox({
+  imageUrl,
+  onClose,
+}: {
+  imageUrl: string
+  onClose: () => void
+}) {
+  if (!imageUrl) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <img
+        src={imageUrl}
+        alt="Expanded view"
+        className="max-w-full max-h-full rounded-lg shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      />
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 bg-gray-800/70 hover:bg-gray-700 text-white p-2 rounded-full"
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
+// Define the type for the user data
 type PendingUser = {
-  _id: Id<"users">;
-  name?: string;
-  pseudonym?: string;
-  email: string;
-  selfieUrl?: string;
-  idUrl?: string;
-  createdAt: number;
-  isApproved: boolean;
+  _id: Id<"users">
+  name?: string
+  pseudonym?: string
+  email: string
+  selfieUrl?: string
+  idUrl?: string
+  createdAt: number
+  isApproved: boolean
+  verificationStatus: "pending" | "approved" | "rejected" | "none"
 }
 
 export default function AdminDashboard() {
@@ -31,63 +69,79 @@ export default function AdminDashboard() {
   const [selectedTab, setSelectedTab] = useState("verification")
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
-  // Only fetch if user is loaded
-  const pendingUsers = useQuery(api.admin.getPendingUsers, user?.id ? { adminClerkId: user.id } : "skip")
+  // --- Add Esc key listener to close lightbox ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedImage(null)
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
+  // FETCH: Get all users at once
+  const users = useQuery(
+    api.admin.getAllUsersWithVerificationStatus,
+    user?.id
+      ? {
+          adminClerkId: user.id,
+        }
+      : "skip"
+  ) as PendingUser[] | undefined
+
   const approveUser = useMutation(api.admin.approveUser)
   const denyUser = useMutation(api.admin.denyUser)
 
-const handleApproveVerification = async (userId: string) => {
-  // Check if user exists (good practice)
-  if (!user) {
-    console.error("Error: Admin user not found.")
-    return
+  const handleApproveVerification = async (userId: string) => {
+    if (!user) return
+    try {
+      await approveUser({
+        adminClerkId: user.id,
+        targetUserId: userId as Id<"users">,
+      })
+    } catch (err) {
+      console.error(err)
+    }
   }
 
-  try {
-    await approveUser({
-      adminClerkId: user.id,
-      targetUserId: userId as Id<"users">
-    })
-    
-    // ✅ Replaced alert with console.log for success
-    console.log(`✅ Verification approved for user ID: ${userId}`) 
-
-  } catch (err) {
-    // ❌ Keeping console.error for the detailed error log
-    console.error(err)
-    
-    // ❌ Replaced alert with console.error for failure notification
-    console.error(`❌ Failed to approve verification for user ID: ${userId}`)
-  }
-}
-
-// -------------------------------------------------------------
-
-const handleRejectVerification = async (userId: string) => {
-  // Check if user exists (good practice)
-  if (!user) {
-    console.error("Error: Admin user not found.")
-    return
+  const handleRejectVerification = async (userId: string) => {
+    if (!user) return
+    try {
+      await denyUser({
+        adminClerkId: user.id,
+        targetUserId: userId as Id<"users">,
+      })
+    } catch (err) {
+      console.error(err)
+    }
   }
 
-  try {
-    await denyUser({
-      adminClerkId: user.id,
-      targetUserId: userId as Id<"users">
-    })
-    
-    // 🚫 Replaced alert with console.log for success
-    console.log(`🚫 Verification rejected for user ID: ${userId}`) 
+  // --- FILTERING LOGIC ---
+  const filteredUsers = users?.filter((user) => {
+    if (statusFilter !== "all") {
+      const userStatus = user.verificationStatus
+      if (statusFilter === "pending_review") {
+        if (userStatus === "pending" || userStatus === "none") {
+        } else {
+          return false
+        }
+      } else if (userStatus !== statusFilter) {
+        return false
+      }
+    }
 
-  } catch (err) {
-    // ❌ Keeping console.error for the detailed error log
-    console.error(err)
-    
-    // ❌ Replaced alert with console.error for failure notification
-    console.error(`❌ Failed to reject verification for user ID: ${userId}`)
-  }
-}
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase()
+      const nameMatch = user.name?.toLowerCase().includes(lowerSearch)
+      const pseudonymMatch = user.pseudonym?.toLowerCase().includes(lowerSearch)
+      const emailMatch = user.email.toLowerCase().includes(lowerSearch)
+      return nameMatch || pseudonymMatch || emailMatch
+    }
+
+    return true
+  })
+
   if (!isLoaded) return <div>Loading...</div>
 
   return (
@@ -103,9 +157,8 @@ const handleRejectVerification = async (userId: string) => {
           </TabsList>
 
           <TabsContent value="verification" className="space-y-6">
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Search verifications..."
                   value={searchTerm}
@@ -113,6 +166,7 @@ const handleRejectVerification = async (userId: string) => {
                   className="pl-10 bg-gray-800 border-gray-700 text-white"
                 />
               </div>
+
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full sm:w-48 bg-gray-800 border-gray-700 text-white">
                   <SelectValue placeholder="Filter by status" />
@@ -127,20 +181,36 @@ const handleRejectVerification = async (userId: string) => {
             </div>
 
             <div className="space-y-4">
-              {/* Type-safe mapping using the PendingUser type */}
-              {(pendingUsers as PendingUser[] | undefined)?.map((verification) => (
+              {filteredUsers?.map((verification) => (
                 <Card key={verification._id} className="bg-gray-800 border-gray-700">
                   <CardContent className="p-6">
                     <div className="space-y-6">
                       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                         <div className="space-y-2">
-                          {/* Display name or pseudonym */}
-                          <h3 className="text-lg font-semibold text-white">{verification.name || verification.pseudonym || "No Name Provided"}</h3>
+                          <h3 className="text-lg font-semibold text-white">
+                            {verification.name ||
+                              verification.pseudonym ||
+                              "No Name Provided"}
+                          </h3>
                           <Badge
-                            variant={verification.isApproved ? "secondary" : "default"}
-                            className={verification.isApproved ? "bg-green-600" : "bg-blue-600"}
+                            variant={
+                              verification.verificationStatus === "approved"
+                                ? "secondary"
+                                : "default"
+                            }
+                            className={
+                              verification.verificationStatus === "approved"
+                                ? "bg-green-600"
+                                : verification.verificationStatus === "rejected"
+                                ? "bg-red-600"
+                                : "bg-blue-600"
+                            }
                           >
-                            {verification.isApproved ? "Approved" : "Pending Review"}
+                            {verification.verificationStatus === "approved"
+                              ? "Approved"
+                              : verification.verificationStatus === "rejected"
+                              ? "Rejected"
+                              : "Pending Review"}
                           </Badge>
                           <p className="text-sm text-gray-400">
                             Email: {verification.email}
@@ -150,22 +220,32 @@ const handleRejectVerification = async (userId: string) => {
 
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="space-y-3">
-                          <h4 className="text-sm font-medium text-gray-300">ID Document</h4>
-                          {/* Mapped to 'idUrl' */}
+                          <h4 className="text-sm font-medium text-gray-300">
+                            ID Document
+                          </h4>
                           <img
                             src={verification.idUrl || "/placeholder.svg"}
                             alt="ID Document"
                             className="w-full h-48 object-cover rounded-lg border border-gray-600 cursor-pointer hover:border-green-500 transition-colors"
+                            onClick={() =>
+                              setSelectedImage(verification.idUrl || "/placeholder.svg")
+                            }
                           />
                         </div>
 
                         <div className="space-y-3">
-                          <h4 className="text-sm font-medium text-gray-300">Selfie Photo</h4>
-                          {/* Mapped to 'selfieUrl' */}
+                          <h4 className="text-sm font-medium text-gray-300">
+                            Selfie Photo
+                          </h4>
                           <img
                             src={verification.selfieUrl || "/placeholder.svg"}
                             alt="Selfie Verification"
                             className="w-full h-48 object-cover rounded-lg border border-gray-600 cursor-pointer hover:border-green-500 transition-colors"
+                            onClick={() =>
+                              setSelectedImage(
+                                verification.selfieUrl || "/placeholder.svg"
+                              )
+                            }
                           />
                         </div>
                       </div>
@@ -174,7 +254,10 @@ const handleRejectVerification = async (userId: string) => {
                         <Button
                           className="bg-green-600 hover:bg-green-700 flex-1"
                           onClick={() => handleApproveVerification(verification._id)}
-                          disabled={verification.isApproved} 
+                          disabled={
+                            verification.verificationStatus === "approved" ||
+                            verification.verificationStatus === "rejected"
+                          }
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
                           Approve Verification
@@ -183,7 +266,10 @@ const handleRejectVerification = async (userId: string) => {
                           variant="destructive"
                           className="flex-1"
                           onClick={() => handleRejectVerification(verification._id)}
-                          disabled={verification.isApproved} 
+                          disabled={
+                            verification.verificationStatus === "approved" ||
+                            verification.verificationStatus === "rejected"
+                          }
                         >
                           <XCircle className="w-4 h-4 mr-2" />
                           Reject
@@ -193,17 +279,24 @@ const handleRejectVerification = async (userId: string) => {
                   </CardContent>
                 </Card>
               ))}
-              {/* Add a message if no users are pending review */}
-              {pendingUsers && pendingUsers.length === 0 && (
+
+              {filteredUsers && filteredUsers.length === 0 && (
                 <div className="text-center p-8 bg-gray-800 rounded-lg">
                   <CheckCircle className="w-8 h-8 mx-auto mb-3 text-green-500" />
-                  <p className="text-lg font-medium">All clear! No users are currently pending review.</p>
+                  <p className="text-lg font-medium">
+                    No users match your current search and filter criteria.
+                  </p>
                 </div>
               )}
             </div>
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* --- LIGHTBOX --- */}
+      {selectedImage && (
+        <Lightbox imageUrl={selectedImage} onClose={() => setSelectedImage(null)} />
+      )}
     </div>
   )
 }

@@ -1,5 +1,43 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+
+// --- 🚀 NEW: SYNC/UPSERT USER (Handles first-time login automatically) ---
+export const syncUser = mutation({
+  args: {
+    clerkId: v.string(),
+    email: v.string(),
+    name: v.string(),
+    imageUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("byClerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (existingUser) {
+      await ctx.db.patch(existingUser._id, {
+        name: args.name,
+        email: args.email,
+        // We don't overwrite onboarding/verification status here
+      });
+      return existingUser._id;
+    }
+
+    // Default values for a brand new user
+    return await ctx.db.insert("users", {
+      clerkId: args.clerkId,
+      email: args.email,
+      name: args.name,
+      pseudonym: args.name.split(" ")[0] + Math.floor(Math.random() * 1000), // Default pseudonym
+      isApproved: false,
+      hasCompletedOnboarding: false,
+      verificationStatus: "none",
+      createdAt: Date.now(),
+    });
+  },
+});
 
 // --- CREATE USER ---
 export const createUser = mutation({
@@ -15,16 +53,18 @@ export const createUser = mutation({
     isSubscribed: v.optional(v.boolean()),
     subscriptionPlan: v.optional(v.string()),
     createdAt: v.number(),
+    verificationStatus: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const newUser = await ctx.db.insert("users", {
       ...args,
+      verificationStatus: args.verificationStatus || "none",
     });
     return newUser;
   },
 });
 
-// --- READ USER ---
+// --- READ USER (FIXED: Returns null instead of throwing) ---
 export const readUser = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
@@ -33,8 +73,9 @@ export const readUser = query({
       .withIndex("byClerkId", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
-    if (!user) throw new Error(`User not found for clerkId: ${args.clerkId}`);
-    return user;
+    // ✅ Removed the throw error. Returning null allows the frontend 
+    // to show a loading state or redirect to onboarding.
+    return user; 
   },
 });
 
@@ -48,12 +89,17 @@ export const markApproved = mutation({
       .first();
 
     if (!user) throw new Error("User not found");
-    await ctx.db.patch(user._id, { isApproved: args.isApproved });
+
+    await ctx.db.patch(user._id, {
+      isApproved: args.isApproved,
+      verificationStatus: args.isApproved ? "approved" : "rejected",
+    });
+
     return { success: true };
   },
 });
 
-// --- UPDATE SUBSCRIPTION (Polar webhook or client side) ---
+// --- UPDATE SUBSCRIPTION ---
 export const markSubscribed = mutation({
   args: { clerkId: v.string(), isSubscribed: v.boolean(), subscriptionPlan: v.optional(v.string()) },
   handler: async (ctx, args) => {
@@ -71,9 +117,10 @@ export const markSubscribed = mutation({
   },
 });
 
-// --- GET APPROVED USERS (for admin dashboard) ---
+// --- GET APPROVED USERS ---
 export const getApprovedUsers = query({
   handler: async (ctx) => {
+    // Note: Ensure you have an index "byIsApproved" in schema.ts
     const users = await ctx.db
       .query("users")
       .withIndex("byIsApproved", (q) => q.eq("isApproved", true))
@@ -95,37 +142,72 @@ export const deleteUser = mutation({
   },
 });
 
-// Add this to your Convex file (e.g., users.ts)
+// --- FINISH ONBOARDING ---
 export const finishOnboarding = mutation({
   args: {
     clerkId: v.string(),
-    name: v.string(),
-    pseudonym: v.string(),
-    selfieUrl: v.optional(v.string()),
-    idUrl: v.optional(v.string()),
+    selfieUrl: v.optional(v.id("_storage")),
+    idUrl: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    // 1. Find the existing user record created by the Clerk webhook
     const existingUser = await ctx.db
       .query("users")
       .withIndex("byClerkId", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
     if (!existingUser) {
-      // This is a critical error if the webhook ran correctly
-      throw new Error("User record not found during onboarding update. Webhook might have failed.");
+      throw new Error("User record not found during onboarding update.");
     }
 
-    // 2. Patch the record with onboarding data
-    await ctx.db.patch(existingUser._id, {
-      name: args.name,
-      pseudonym: args.pseudonym,
-      selfieUrl: args.selfieUrl,
-      idUrl: args.idUrl,
-      hasCompletedOnboarding: true, // Mark onboarding complete
-    });
-    
+    const updates: any = {
+      hasCompletedOnboarding: true,
+      verificationStatus: "pending",
+    };
+
+    if (args.selfieUrl !== undefined) updates.selfieUrl = args.selfieUrl;
+    if (args.idUrl !== undefined) updates.idUrl = args.idUrl;
+
+    await ctx.db.patch(existingUser._id, updates);
+
     return { success: true };
   },
 });
 
+// --- UPDATE VERIFICATION DOCUMENTS ---
+export const updateVerificationDocuments = mutation({
+  args: {
+    clerkId: v.string(),
+    selfieStorageId: v.optional(v.id("_storage")),
+    idStorageId: v.optional(v.id("_storage")),
+  },
+  handler: async (ctx, args) => {
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("byClerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!existingUser) throw new Error("User record not found for update.");
+
+    const updates: {
+      selfieUrl?: Id<"_storage">;
+      idUrl?: Id<"_storage">;
+      verificationStatus?: "pending";
+    } = {};
+
+    if (args.selfieStorageId) {
+      updates.selfieUrl = args.selfieStorageId;
+      updates.verificationStatus = "pending";
+    }
+
+    if (args.idStorageId) {
+      updates.idUrl = args.idStorageId;
+      updates.verificationStatus = "pending";
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await ctx.db.patch(existingUser._id, updates);
+    }
+
+    return { success: true };
+  },
+});
