@@ -8,7 +8,7 @@ export function useConvexUpload() {
   
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   // Correctly referencing the server mutation
-  const saveStorageId = useMutation(api.users.updateVerificationDocuments);
+  const saveStorageId = useMutation(api.users.finishOnboarding);
 
   /**
    * Performs the 3-step Convex file upload: Get URL -> POST file -> Save storage ID.

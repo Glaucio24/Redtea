@@ -1,10 +1,13 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
+// We make the "Handshake" and "Gate" routes public so they don't loop
 const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)', 
-  '/api/auth/webhook'
+  '/api/auth/webhook(.*)',
+  '/onboarding(.*)',
+  '/waiting-approval(.*)'
 ])
 
 export default clerkMiddleware(async (auth, req) => {

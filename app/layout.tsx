@@ -4,7 +4,7 @@ import "./globals.css";
 import { ConvexClientProvider } from "@/components/ui/providers/convex-provider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
-import { LayoutContent } from "./client-layout"; 
+import { ClientLayout } from "./client-layout"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Red Tea",
-  description: "A place for dating feedback",
+  description: "Dating Feedback",
 };
 
 export default function RootLayout({
@@ -27,16 +27,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
       <html lang="en" suppressHydrationWarning>
-        <body 
-          className={`${geistSans.variable} ${geistMono.variable} antialiased m-0 p-0 bg-gray-900`}
-          suppressHydrationWarning
-        >
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900`}>
           <ConvexClientProvider>
-            <LayoutContent>
+            <ClientLayout>
               {children}
-            </LayoutContent>
+            </ClientLayout>
           </ConvexClientProvider>
           <Toaster theme="dark" position="bottom-right" />
         </body>

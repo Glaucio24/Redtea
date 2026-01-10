@@ -1,53 +1,56 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/sidebar"; 
 import { useUser } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { generatePseudonym } from "@/lib/generatePseudonym";
 
-export function LayoutContent({ children }: { children: React.ReactNode }) {
+export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isSignedIn, isLoaded: clerkLoaded } = useUser();
+  const { user, isLoaded: clerkLoaded } = useUser();
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   
-  // Use user.id if available, otherwise skip
-  const userInfo = useQuery(api.users.readUser, user?.id ? { clerkId: user.id } : "skip");
+  const userInfo = useQuery((api.users as any).readUser, user?.id ? { clerkId: user.id } : "skip");
+  const storeUser = useMutation((api.users as any).storeUser);
   
   const [mounted, setMounted] = useState(false);
-  const [timedOut, setTimedOut] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const syncAttempted = useRef(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    setMounted(true);
-    // If Clerk hangs for more than 2 seconds, we force the UI to try and render
-    const timer = setTimeout(() => {
-      setTimedOut(true);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+    if (isAuthenticated && userInfo === null && !syncAttempted.current && user?.id) {
+      syncAttempted.current = true;
+      setIsSyncing(true);
+      storeUser({ pseudonym: generatePseudonym(user.id) })
+        .finally(() => {
+          setTimeout(() => setIsSyncing(false), 800);
+        });
+    }
+  }, [isAuthenticated, userInfo, storeUser, user?.id]);
 
-  // --- REDIRECT LOGIC ---
   useEffect(() => {
-    // Only run redirects if Clerk is loaded and user is in the DB
-    if (!clerkLoaded || !isSignedIn || userInfo === undefined) return;
+    if (!mounted || !clerkLoaded || authLoading || isSyncing) return;
 
-    // 1. Handle New Users
-    if (userInfo === null) {
-      if (pathname !== "/onboarding") router.replace("/onboarding");
+    if (!isAuthenticated) {
+      if (pathname !== "/" && !pathname.startsWith("/sign-in") && !pathname.startsWith("/sign-up")) {
+        router.replace("/");
+      }
       return;
     }
 
-    const isAdmin = userInfo.role === "admin";
-    const isGatePage = pathname === "/onboarding" || pathname === "/waiting-approval";
+    if (userInfo === undefined || userInfo === null) return;
 
-    // 2. Admin Flow
-    if (isAdmin) {
-      if (isGatePage || pathname === "/") router.replace("/adminDashboard");
-      return; 
+    if (userInfo.role === "admin") {
+      if (pathname === "/") router.replace("/adminDashboard");
+      return;
     }
 
-    // 3. Regular User Flow
     if (!userInfo.hasCompletedOnboarding) {
       if (pathname !== "/onboarding") router.replace("/onboarding");
       return;
@@ -58,53 +61,38 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // 4. Approved Users: send to SubmitPost
-    if (userInfo.isApproved && (isGatePage || pathname === "/")) {
-      router.replace("/submitPost");
-    }
-  }, [clerkLoaded, isSignedIn, userInfo, pathname, router]);
+    const isAtGate = pathname === "/" || pathname === "/onboarding" || pathname === "/waiting-approval";
+    if (isAtGate) router.replace("/submitPost");
+  }, [clerkLoaded, authLoading, isAuthenticated, userInfo, pathname, router, mounted, isSyncing]);
 
-  // --- SIDEBAR VISIBILITY ---
-  const isAdmin = userInfo?.role === "admin";
-  const isApproved = userInfo?.isApproved === true;
-  const isGatePage = pathname === "/onboarding" || pathname === "/waiting-approval";
-
-  const shouldShowSidebar = 
-    isSignedIn && 
-    userInfo && 
-    (isAdmin || (isApproved && !isGatePage));
-
-  // Determine if we show the "Loading" spinner
-  // We stop loading if: mounted AND (Clerk is Loaded OR 2 seconds have passed)
-  const isLoading = !mounted || (!clerkLoaded && !timedOut);
-
-  if (isLoading) {
+  const isWaiting = !mounted || authLoading || isSyncing || (isAuthenticated && (userInfo === undefined || userInfo === null));
+  
+  if (isWaiting) {
     return (
-      <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white font-sans">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-medium">Initializing Red Tea...</p>
-          <p className="text-[10px] text-gray-500 opacity-50">
-            {!clerkLoaded ? "Connecting to Clerk..." : "Fetching Profile..."}
-          </p>
-        </div>
+      <div className="bg-gray-900 min-h-screen flex flex-col items-center justify-center text-white">
+        <div className="w-10 h-10 border-2 border-red-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-white/40 animate-pulse text-[10px] uppercase tracking-[0.2em] font-bold">
+          Authenticating...
+        </p>
       </div>
     );
   }
+
+  const shouldShowSidebar = isAuthenticated && userInfo && (userInfo.role === "admin" || (userInfo.isApproved && !["/", "/onboarding", "/waiting-approval"].includes(pathname)));
 
   return (
     <div className="flex min-h-screen bg-gray-900">
       {shouldShowSidebar && (
         <Sidebar 
-          activeTab={pathname === "/adminDashboard" ? "admin" : (pathname === "/submitPost" ? "submit" : "feed")} 
+          activeTab={pathname.includes("admin") ? "admin" : (pathname.includes("submit") ? "submit" : "feed")} 
           onTabChange={(tab) => {
             if (tab === "admin") router.push("/adminDashboard");
+            else if (tab === "feed") router.push("/communityFeed");
             else router.push("/submitPost");
           }}
-          isAdmin={isAdmin}
+          isAdmin={userInfo?.role === "admin"}
         />
       )}
-      
       <main className={`flex-1 overflow-auto ${shouldShowSidebar ? "border-l border-gray-800" : ""}`}>
         {children}
       </main>
