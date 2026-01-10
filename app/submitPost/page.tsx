@@ -1,234 +1,176 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useUser } from "@clerk/nextjs"
-import { api } from "@/convex/_generated/api"
-import { useMutation } from "convex/react"
-import { toast } from "sonner" // 🎯 UPDATED: Import toast directly from sonner
-
-// Assuming these components exist in your project
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Upload, Loader2, Send } from "lucide-react"
-
-// Define the type for the post form data
-type PostFormData = {
-  text: string;
-  age: string;
-  city: string;
-  file: File | null;
-}
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
+import { Upload, Loader2, X, Image as ImageIcon } from "lucide-react";
 
 export default function SubmitPostPage() {
-  const { user, isLoaded } = useUser();
-  
-  // --- STATE ---
-  const [formData, setFormData] = useState<PostFormData>({
-    text: "",
-    age: "",
-    city: "",
-    file: null,
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // --- CONVEX MUTATIONS ---
+  const router = useRouter();
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
-  const createPost = useMutation(api.posts.createPost); 
+  const createPost = useMutation(api.posts.createPost);
 
-  // --- HANDLERS ---
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const [text, setText] = useState("");
+  const [age, setAge] = useState("");
+  const [city, setCity] = useState("");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // This is the secret to making your UI work
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // When they click your styled box, we "click" the hidden input for them
+  const handleBoxClick = () => {
+    fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setFormData((prev) => ({ ...prev, file }));
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || isSubmitting) return;
-
-    const { text, age, city, file } = formData;
-    const numericAge = parseInt(age);
-
-    if (!text.trim() && !file) {
-      // 🎯 UPDATED: Using sonner toast
-      toast.warning("Submission Blocked", {
-        description: "Please enter some text or select a file to post.",
-      });
+    if (!text || !age || !city || !selectedImage) {
+      alert("Please fill in all fields and upload an image.");
       return;
-    }
-    if (isNaN(numericAge) || numericAge <= 0 || !city.trim()) {
-      // 🎯 UPDATED: Using sonner toast
-         toast.error("Missing Information", {
-            description: "Please provide a valid age and city.",
-         });
-         return;
     }
 
     setIsSubmitting(true);
 
     try {
-      let storageId: string | undefined = undefined;
+      const postUrl = await generateUploadUrl();
 
-      // 1. Handle File Upload (if a file is present)
-      if (file) {
-        const uploadUrl = await generateUploadUrl();
-        const result = await fetch(uploadUrl, {
-          method: "POST",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
+      const result = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": selectedImage.type },
+        body: selectedImage,
+      });
+      const { storageId } = await result.json();
 
-        if (!result.ok) {
-          throw new Error(`File upload failed: ${result.statusText}`);
-        }
-        
-        const { storageId: newStorageId } = await result.json();
-        storageId = newStorageId;
-      }
-
-      // 2. Call the Convex mutation to create the post
       await createPost({
-        text: text.trim(),
-        age: numericAge,
-        city: city.trim(),
+        text,
+        age: parseInt(age),
+        city,
         fileId: storageId,
       });
 
-      // 3. Success Feedback and Reset
-      // 🎯 UPDATED: Using sonner toast
-      toast.success("Post Submitted! 🎉", {
-        description: "Your content is now live.",
-      });
-
-      setFormData({ text: "", age: "", city: "", file: null });
-
+      router.push("/communityFeed");
     } catch (error) {
-      console.error("Post submission failed:", error);
-      // 🎯 UPDATED: Using sonner toast
-      toast.error("Error Submitting Post", {
-        description: "There was a problem saving your post. Check the console for details.",
-      });
+      console.error("Failed to submit post:", error);
+      alert("Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // --- UI Check ---
-  if (!isLoaded) return <div>Loading...</div>;
-  if (!user) return <div className="text-center p-8 text-gray-400">Please sign in to create a post.</div>;
-
-
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6">Create New Post</h1>
-        
-        <Card className="bg-gray-800 border-gray-700 max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle className="text-xl text-green-500">
-              Share Your Story
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              
-              {/* Context/Text Area */}
-              <div className="space-y-2">
-                <Label htmlFor="post-text" className="text-sm font-medium text-gray-300">
-                  What happened? (Required if no file is uploaded)
-                </Label>
-                <Textarea
-                  id="post-text"
-                  name="text"
-                  placeholder="Describe your situation or context here..."
-                  value={formData.text}
-                  onChange={handleInputChange}
-                  rows={5}
-                  className="bg-gray-700 border-gray-600 text-white focus:ring-green-500"
-                />
-              </div>
+    <div className="max-w-2xl mx-auto p-4 lg:p-8">
+      <h1 className="text-3xl font-bold text-white mb-8">Spill the Tea</h1>
+      
+      <Card className="bg-gray-900 border-gray-800 p-6 shadow-xl">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Image Upload Area */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-400">Photo of the Person</label>
+            
+            {/* The Hidden Input that actually does the work */}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              ref={fileInputRef}
+              className="hidden"
+            />
 
-              {/* Age and City Inputs */}
-              <div className="flex gap-4">
-                  <div className="space-y-2 flex-1">
-                    <Label htmlFor="post-age" className="text-sm font-medium text-gray-300">
-                      Your Age
-                    </Label>
-                    <Input
-                      id="post-age"
-                      name="age"
-                      type="number"
-                      placeholder="e.g., 25"
-                      value={formData.age}
-                      onChange={handleInputChange}
-                      className="bg-gray-700 border-gray-600 text-white"
-                      min="18"
-                      max="100"
-                    />
-                  </div>
-                  <div className="space-y-2 flex-1">
-                    <Label htmlFor="post-city" className="text-sm font-medium text-gray-300">
-                      City/Location
-                    </Label>
-                    <Input
-                      id="post-city"
-                      name="city"
-                      type="text"
-                      placeholder="e.g., Houston, TX"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      className="bg-gray-700 border-gray-600 text-white"
-                    />
-                  </div>
-              </div>
+            {/* Your EXACT UI logic, now with a click handler */}
+            <div 
+              onClick={handleBoxClick}
+              className={`relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center transition-all min-h-[200px] cursor-pointer ${
+                selectedImage ? "border-green-500/50 bg-green-500/5" : "border-gray-800 hover:border-gray-700 bg-gray-800/30"
+              }`}
+            >
+              {!selectedImage ? (
+                <div className="flex flex-col items-center pointer-events-none">
+                  <Upload className="text-gray-500 mb-2" size={32} />
+                  <p className="text-gray-500 text-sm text-center font-medium">Click to upload or drag and drop</p>
+                  <p className="text-gray-600 text-xs mt-1">Images only (JPG, PNG)</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center w-full">
+                   <div className="flex items-center gap-3 bg-gray-800 p-3 rounded-xl border border-gray-700 w-full mb-2">
+                      <ImageIcon className="text-green-500" size={20} />
+                      <span className="text-gray-200 text-sm truncate flex-1">{selectedImage.name}</span>
+                      <Button 
+                        type="button"
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-gray-400 hover:text-red-500 z-20"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Stops it from opening the file picker again
+                          setSelectedImage(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                      >
+                        <X size={18} />
+                      </Button>
+                   </div>
+                   <p className="text-xs text-gray-500">Click anywhere in the box to change photo</p>
+                </div>
+              )}
+            </div>
+          </div>
 
-              {/* File Upload */}
-              <div className="space-y-2">
-                <Label htmlFor="post-file" className="text-sm font-medium text-gray-300 flex items-center">
-                  <Upload className="w-4 h-4 mr-2" /> Upload Media (Optional: Image or Video)
-                </Label>
-                <Input
-                  id="post-file"
-                  type="file"
-                  accept="image/*,video/*"
-                  onChange={handleFileChange}
-                  className="bg-gray-700 border-gray-600 text-white file:text-green-400 file:bg-gray-600 file:border-none hover:file:bg-gray-500"
-                />
-                {formData.file && (
-                    <p className="text-sm text-gray-400 mt-1">Selected file: **{formData.file.name}** ({Math.round(formData.file.size / 1024 / 1024)} MB)</p>
-                )}
-              </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-400">Age</label>
+              <Input
+                type="number"
+                placeholder="25"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white h-12 focus:ring-red-600"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-400">City</label>
+              <Input
+                placeholder="London"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white h-12 focus:ring-red-600"
+              />
+            </div>
+          </div>
 
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                className="w-full bg-green-600 hover:bg-green-700"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Publishing...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Publish Post
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-        
-      </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-400">Context / Story</label>
+            <Textarea
+              placeholder="What's the tea? Give us the details..."
+              rows={5}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              className="bg-gray-800 border-gray-700 text-white resize-none focus:ring-red-600"
+            />
+          </div>
+
+          <Button 
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-6 rounded-2xl transition-all active:scale-[0.98]"
+          >
+            {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
+            {isSubmitting ? "Brewing the tea..." : "Post to Community"}
+          </Button>
+        </form>
+      </Card>
     </div>
-  )
+  );
 }
