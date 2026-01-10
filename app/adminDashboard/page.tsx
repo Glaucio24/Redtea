@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CheckCircle, XCircle } from "lucide-react"
+import { CheckCircle, XCircle, Loader2 } from "lucide-react"
 
 // --- Lightbox Component ---
 function Lightbox({
@@ -80,40 +80,35 @@ export default function AdminDashboard() {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
 
-  // FETCH: Get all users at once
+  // 🎯 UI FIX: Removed adminClerkId. 
+  // The backend now gets your ID from the secure session automatically.
   const users = useQuery(
     api.admin.getAllUsersWithVerificationStatus,
-    user?.id
-      ? {
-          adminClerkId: user.id,
-        }
-      : "skip"
+    isLoaded && user ? {} : "skip"
   ) as PendingUser[] | undefined
 
   const approveUser = useMutation(api.admin.approveUser)
   const denyUser = useMutation(api.admin.denyUser)
 
   const handleApproveVerification = async (userId: string) => {
-    if (!user) return
     try {
+      // 🎯 UI FIX: Only passing the targetUserId now
       await approveUser({
-        adminClerkId: user.id,
         targetUserId: userId as Id<"users">,
       })
     } catch (err) {
-      console.error(err)
+      console.error("Approval failed:", err)
     }
   }
 
   const handleRejectVerification = async (userId: string) => {
-    if (!user) return
     try {
+      // 🎯 UI FIX: Only passing the targetUserId now
       await denyUser({
-        adminClerkId: user.id,
         targetUserId: userId as Id<"users">,
       })
     } catch (err) {
-      console.error(err)
+      console.error("Rejection failed:", err)
     }
   }
 
@@ -123,6 +118,7 @@ export default function AdminDashboard() {
       const userStatus = user.verificationStatus
       if (statusFilter === "pending_review") {
         if (userStatus === "pending" || userStatus === "none") {
+          // Keep these
         } else {
           return false
         }
@@ -142,7 +138,14 @@ export default function AdminDashboard() {
     return true
   })
 
-  if (!isLoaded) return <div>Loading...</div>
+  if (!isLoaded || users === undefined) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+        <Loader2 className="w-8 h-8 animate-spin text-green-500 mr-3" />
+        <p>Loading Admin Data...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -193,11 +196,6 @@ export default function AdminDashboard() {
                               "No Name Provided"}
                           </h3>
                           <Badge
-                            variant={
-                              verification.verificationStatus === "approved"
-                                ? "secondary"
-                                : "default"
-                            }
                             className={
                               verification.verificationStatus === "approved"
                                 ? "bg-green-600"
@@ -284,7 +282,7 @@ export default function AdminDashboard() {
                 <div className="text-center p-8 bg-gray-800 rounded-lg">
                   <CheckCircle className="w-8 h-8 mx-auto mb-3 text-green-500" />
                   <p className="text-lg font-medium">
-                    No users match your current search and filter criteria.
+                    No users match your criteria.
                   </p>
                 </div>
               )}
