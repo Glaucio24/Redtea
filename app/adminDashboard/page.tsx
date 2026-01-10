@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select"
 import { CheckCircle, XCircle, Loader2 } from "lucide-react"
 
-// --- Lightbox Component ---
+// --- Lightbox Component updates ---
 function Lightbox({
   imageUrl,
   onClose,
