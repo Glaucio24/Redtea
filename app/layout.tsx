@@ -27,20 +27,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body 
-        className={`${geistSans.variable} ${geistMono.variable} antialiased m-0 p-0`}
-        suppressHydrationWarning
-      >
-        <ClerkProvider dynamic>
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning>
+        <body 
+          className={`${geistSans.variable} ${geistMono.variable} antialiased m-0 p-0 bg-gray-900`}
+          suppressHydrationWarning
+        >
           <ConvexClientProvider>
             <LayoutContent>
               {children}
             </LayoutContent>
           </ConvexClientProvider>
           <Toaster theme="dark" position="bottom-right" />
-        </ClerkProvider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
