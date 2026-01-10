@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
 import { api } from "@/convex/_generated/api"
-import { useMutation, useQuery } from "convex/react"
+// 🎯 Added useConvexAuth to handle secure session timing
+import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import type { Id } from "@/convex/_generated/dataModel"
 
 import { Card, CardContent } from "@/components/ui/card"
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/select"
 import { CheckCircle, XCircle, Loader2 } from "lucide-react"
 
-// --- Lightbox Component updates ---
+// --- Lightbox Component ---
 function Lightbox({
   imageUrl,
   onClose,
@@ -65,7 +66,10 @@ type PendingUser = {
 }
 
 export default function AdminDashboard() {
-  const { user, isLoaded } = useUser()
+  const { user } = useUser()
+  // 🎯 Track real Convex auth state to avoid "Unauthenticated" server errors
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth()
+  
   const [selectedTab, setSelectedTab] = useState("verification")
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -80,11 +84,10 @@ export default function AdminDashboard() {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
 
-  // 🎯 UI FIX: Removed adminClerkId. 
-  // The backend now gets your ID from the secure session automatically.
+  // 🎯 FIX: We only run this query if Convex has verified our session (isAuthenticated)
   const users = useQuery(
     api.admin.getAllUsersWithVerificationStatus,
-    isLoaded && user ? {} : "skip"
+    isAuthenticated ? {} : "skip"
   ) as PendingUser[] | undefined
 
   const approveUser = useMutation(api.admin.approveUser)
@@ -92,7 +95,6 @@ export default function AdminDashboard() {
 
   const handleApproveVerification = async (userId: string) => {
     try {
-      // 🎯 UI FIX: Only passing the targetUserId now
       await approveUser({
         targetUserId: userId as Id<"users">,
       })
@@ -103,7 +105,6 @@ export default function AdminDashboard() {
 
   const handleRejectVerification = async (userId: string) => {
     try {
-      // 🎯 UI FIX: Only passing the targetUserId now
       await denyUser({
         targetUserId: userId as Id<"users">,
       })
@@ -113,15 +114,11 @@ export default function AdminDashboard() {
   }
 
   // --- FILTERING LOGIC ---
-  const filteredUsers = users?.filter((user) => {
+  const filteredUsers = users?.filter((u) => {
     if (statusFilter !== "all") {
-      const userStatus = user.verificationStatus
+      const userStatus = u.verificationStatus
       if (statusFilter === "pending_review") {
-        if (userStatus === "pending" || userStatus === "none") {
-          // Keep these
-        } else {
-          return false
-        }
+        if (userStatus !== "pending" && userStatus !== "none") return false
       } else if (userStatus !== statusFilter) {
         return false
       }
@@ -129,20 +126,30 @@ export default function AdminDashboard() {
 
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase()
-      const nameMatch = user.name?.toLowerCase().includes(lowerSearch)
-      const pseudonymMatch = user.pseudonym?.toLowerCase().includes(lowerSearch)
-      const emailMatch = user.email.toLowerCase().includes(lowerSearch)
+      const nameMatch = u.name?.toLowerCase().includes(lowerSearch)
+      const pseudonymMatch = u.pseudonym?.toLowerCase().includes(lowerSearch)
+      const emailMatch = u.email.toLowerCase().includes(lowerSearch)
       return nameMatch || pseudonymMatch || emailMatch
     }
 
     return true
   })
 
-  if (!isLoaded || users === undefined) {
+  // 🎯 UI FIX: Wait for both Auth and Data
+  if (authLoading || (isAuthenticated && users === undefined)) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
         <Loader2 className="w-8 h-8 animate-spin text-green-500 mr-3" />
-        <p>Loading Admin Data...</p>
+        <p>Verifying Admin Session...</p>
+      </div>
+    )
+  }
+
+  // Safety check if user manually navigates here without being logged in
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+        <p>Access Denied. Please sign in.</p>
       </div>
     )
   }

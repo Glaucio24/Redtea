@@ -10,9 +10,9 @@ import { api } from "@/convex/_generated/api";
 export function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isSignedIn, isLoaded } = useUser();
+  const { user, isSignedIn, isLoaded: clerkLoaded } = useUser();
   
-  // Fetch real-time user data from Convex to check approval status
+  // Fetch real-time user data from Convex
   const userInfo = useQuery(api.users.readUser, user ? { clerkId: user.id } : "skip");
   
   const [mounted, setMounted] = useState(false);
@@ -20,6 +20,43 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // --- Redirect & Security Logic ---
+  useEffect(() => {
+    if (clerkLoaded && isSignedIn && userInfo !== undefined && userInfo !== null) {
+      
+      // 1. ADMIN REDIRECT 🛡️
+      if (userInfo.role === "admin") {
+        // If an admin accidentally lands on a gate page, send them to the cockpit
+        if (pathname === "/onboarding" || pathname === "/waiting-approval") {
+          router.replace("/adminDashboard");
+        }
+        return; 
+      }
+
+      // 2. ONBOARDING CHECK (Regular Users)
+      if (!userInfo.hasCompletedOnboarding) {
+        if (pathname !== "/onboarding") {
+          router.replace("/onboarding");
+        }
+        return;
+      }
+
+      // 3. APPROVAL CHECK (Regular Users)
+      if (!userInfo.isApproved) {
+        if (pathname !== "/waiting-approval") {
+          router.replace("/waiting-approval");
+        }
+        return;
+      }
+
+      // 4. PREVENT GOING BACK (Regular Users)
+      const gatePages = ["/onboarding", "/waiting-approval"];
+      if (userInfo.isApproved && gatePages.includes(pathname)) {
+        router.replace("/dashboard");
+      }
+    }
+  }, [clerkLoaded, isSignedIn, userInfo, pathname, router]);
 
   const getActiveTab = () => {
     if (pathname === "/" || pathname === "/feed" || pathname === "/dashboard") return "feed";
@@ -34,7 +71,8 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
     setActiveTab(getActiveTab());
   }, [pathname]);
 
-  const isAdmin = user?.publicMetadata?.role === "admin" || false;
+  // 🎯 FIX: Use the role from your Convex DB, not Clerk metadata
+  const isAdmin = userInfo?.role === "admin";
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -43,24 +81,23 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
     else if (tab === "admin") router.push("/adminDashboard");
   };
 
-  if (!mounted || !isLoaded) {
+  if (!mounted || !clerkLoaded) {
     return <div className="bg-gray-900 min-h-screen">{children}</div>;
   }
 
-  // 🎯 PROFESSIONAL HIDE LOGIC
-  // We hide the sidebar if:
-  // 1. User is not signed in
-  // 2. We are on a sign-in/up page
-  // 3. We are on the landing page (/)
-  // 4. We are on the waiting-approval page
-  // 5. The user exists in DB but is NOT approved yet
-  const isWaitingPage = pathname === "/waiting-approval";
+  // --- PROFESSIONAL HIDE LOGIC ---
   const isPublicPage = pathname === "/" || pathname?.startsWith("/sign-");
-  const isNotApproved = userInfo && !userInfo.isApproved;
+  const isWaitingPage = pathname === "/waiting-approval";
+  const isAppPage = pathname === "/dashboard" || pathname === "/submitPost" || pathname === "/adminDashboard";
 
-  const hideSidebar = !isSignedIn || isPublicPage || isWaitingPage || isNotApproved;
+  // 🎯 FIX: Admins should ALWAYS see the sidebar on app pages, even if isApproved is false
+  const shouldShowSidebar = 
+    isSignedIn && 
+    !isPublicPage && 
+    !isWaitingPage && 
+    (isAdmin || (userInfo && userInfo.isApproved));
 
-  if (hideSidebar) {
+  if (!shouldShowSidebar) {
     return <div className="bg-gray-900 min-h-screen">{children}</div>;
   }
 

@@ -16,6 +16,7 @@ export default defineSchema({
     subscriptionPlan: v.optional(v.string()), // optional: "basic", "premium", etc.
     createdAt: v.number(),
     verificationStatus: v.string(),
+    role: v.optional(v.string()),
   })
     .index("byClerkId", ["clerkId"])
     .index("byIsApproved", ["isApproved"])
