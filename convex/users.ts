@@ -11,6 +11,30 @@ export const readUser = query({
   },
 });
 
+export const getUserStats = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const posts = await ctx.db
+      .query("posts")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .collect();
+
+    let totalGreen = 0;
+    let totalRed = 0;
+    posts.forEach((p) => {
+      totalGreen += p.greenFlags;
+      totalRed += p.redFlags;
+    });
+
+    return {
+      postCount: posts.length,
+      greenFlags: totalGreen,
+      redFlags: totalRed,
+      posts: posts
+    };
+  },
+});
+
 export const storeUser = mutation({
   args: { pseudonym: v.string() },
   handler: async (ctx, args) => {
@@ -32,7 +56,7 @@ export const storeUser = mutation({
       hasCompletedOnboarding: false,
       isApproved: false,
       createdAt: Date.now(),
-      verificationStatus: "not_started", // 🎯 Required by your schema
+      verificationStatus: "not_started",
       role: "user",
       isSubscribed: false,
       subscriptionPlan: "none",
@@ -62,7 +86,7 @@ export const createUser = mutation({
     if (existingUser) return existingUser._id;
     return await ctx.db.insert("users", {
       ...args,
-      verificationStatus: "not_started", // 🎯 Required by your schema
+      verificationStatus: "not_started",
       role: "user",
     });
   },
@@ -97,7 +121,7 @@ export const finishOnboarding = mutation({
     if (!user) throw new Error("User not found");
     await ctx.db.patch(user._id, {
       hasCompletedOnboarding: true,
-      verificationStatus: "pending", // Update status when they finish
+      verificationStatus: "pending",
       ...(args.selfieStorageId && { selfieUrl: args.selfieStorageId }),
       ...(args.idStorageId && { idUrl: args.idStorageId }),
     });

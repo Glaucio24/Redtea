@@ -80,15 +80,27 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   const shouldShowSidebar = isAuthenticated && userInfo && (userInfo.role === "admin" || (userInfo.isApproved && !["/", "/onboarding", "/waiting-approval"].includes(pathname)));
 
+  // 🎯 HELPER: Determine which tab is active based on the URL
+  const getActiveTab = () => {
+    if (pathname.includes("admin")) return "admin";
+    if (pathname.includes("submit")) return "submit";
+    if (pathname.includes("search")) return "search";
+    if (pathname.includes("profile")) return "profile";
+    return "feed";
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-900">
       {shouldShowSidebar && (
         <Sidebar 
-          activeTab={pathname.includes("admin") ? "admin" : (pathname.includes("submit") ? "submit" : "feed")} 
+          activeTab={getActiveTab()} 
           onTabChange={(tab) => {
+            // 🎯 FIXED: Map the tab ID to your actual folder routes
             if (tab === "admin") router.push("/adminDashboard");
             else if (tab === "feed") router.push("/communityFeed");
-            else router.push("/submitPost");
+            else if (tab === "submit") router.push("/submitPost");
+            else if (tab === "search") router.push("/search");
+            else if (tab === "profile") router.push("/profile");
           }}
           isAdmin={userInfo?.role === "admin"}
         />

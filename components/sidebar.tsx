@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, Plus, Settings, Menu, X, LogOut } from "lucide-react"
+import { Home, Plus, Settings, Menu, X, LogOut, Search, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { useClerk } from "@clerk/nextjs"
@@ -18,7 +18,9 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
   // Main tabs
   const tabs = [
     { id: "feed", icon: Home, label: "Community Feed" },
+    { id: "search", icon: Search, label: "Search Tea" },
     { id: "submit", icon: Plus, label: "Submit Post" },
+    { id: "profile", icon: User, label: "My Profile" },
   ]
 
   // Admin tabs
@@ -89,14 +91,23 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
           <div className="space-y-2">
             {tabs.map((tab) => {
               const Icon = tab.icon
+
+              // Logic for different tab highlight colors
+              const isActive = activeTab === tab.id
+              let activeStyle = "bg-green-600/20 text-green-300 border border-green-600/40"
+              
+              if (tab.id === "search" || tab.id === "profile") {
+                activeStyle = "bg-blue-600/20 text-blue-300 border border-blue-600/40"
+              }
+
               return (
                 <Button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
-                  variant={activeTab === tab.id ? "secondary" : "ghost"}
+                  variant={isActive ? "secondary" : "ghost"}
                   className={`w-full justify-start gap-3 h-12 ${
-                    activeTab === tab.id
-                      ? "bg-green-600/20 text-green-300 border border-green-600/40"
+                    isActive
+                      ? activeStyle
                       : "text-gray-300 hover:text-white hover:bg-gray-700"
                   }`}
                 >
