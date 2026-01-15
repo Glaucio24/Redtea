@@ -30,13 +30,13 @@ export default function CommunityFeedPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-          {posts.map((post) => (
+          {posts?.map((post) => (
             <PostCard 
               key={post._id} 
               post={{
                 id: post._id,
                 image: post.imageUrl || "/placeholder.svg",
-                name: post.creatorName,
+                name: post.name,
                 age: post.age,
                 city: post.city,
                 context: post.text,

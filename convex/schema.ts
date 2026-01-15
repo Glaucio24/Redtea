@@ -22,14 +22,15 @@ export default defineSchema({
     .index("byIsApproved", ["isApproved"])
     .index("byVerificationStatus", ["verificationStatus"]),
 
-  // 🎯 UPDATED: 'posts' table with media, location, and voting
+ 
   posts: defineTable({
     userId: v.id("users"),
-    // Removed 'title' as it wasn't in the v0 layout
+    name: v.string(), // Added name for the PostCard header
     text: v.string(), // Renamed 'content' to 'text' to match component logic
     age: v.number(), // Added age for the PostCard header
     city: v.string(), // Added city for the PostCard header
     fileId: v.optional(v.string()), // Convex Storage ID for the media (image/video)
+  
 
     // Voting mechanism
     greenFlags: v.number(),

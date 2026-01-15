@@ -6,6 +6,7 @@ import type { Id } from "./_generated/dataModel";
 
 export const createPost = mutation({
     args: {
+        name: v.string(),
         text: v.string(),
         age: v.number(),
         city: v.string(),
@@ -24,6 +25,7 @@ export const createPost = mutation({
 
         return await ctx.db.insert("posts", {
             userId: loggedInUser._id,
+            name: args.name,
             text: args.text,
             age: args.age,
             city: args.city,

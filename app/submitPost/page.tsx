@@ -15,16 +15,17 @@ export default function SubmitPostPage() {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const createPost = useMutation(api.posts.createPost);
 
+  const [subjectName, setSubjectName] = useState("");
   const [text, setText] = useState("");
   const [age, setAge] = useState("");
   const [city, setCity] = useState("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // This is the secret to making your UI work
+  // This is the secret to making my UI work
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // When they click your styled box, we "click" the hidden input for them
+  // When they click my styled box, we "click" the hidden input for them
   const handleBoxClick = () => {
     fileInputRef.current?.click();
   };
@@ -56,6 +57,7 @@ export default function SubmitPostPage() {
       const { storageId } = await result.json();
 
       await createPost({
+        name: subjectName,
         text,
         age: parseInt(age),
         city,
@@ -77,6 +79,16 @@ export default function SubmitPostPage() {
       
       <Card className="bg-gray-900 border-gray-800 p-6 shadow-xl">
         <form onSubmit={handleSubmit} className="space-y-6">
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-400">Who are we talking about?</label>
+            <Input
+              placeholder="Full Name"
+              value={subjectName}
+              onChange={(e) => setSubjectName(e.target.value)}
+              className="bg-gray-800 border-gray-700 text-white h-12 rounded-xl focus:ring-red-600"
+            />
+          </div>
           {/* Image Upload Area */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-400">Photo of the Person</label>
