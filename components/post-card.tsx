@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, Flag, CheckCircle2, Trash2, AlertCircle, Loader2 } from "lucide-react";
+import { MessageCircle, Flag, CheckCircle2, Trash2, AlertCircle, Loader2, X } from "lucide-react";
 import Image from "next/image";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
-import { toast } from "sonner"; // Or "use-toast" depending on your shadcn setup
+import { toast } from "sonner";
 
 interface PostCardProps {
   post: {
@@ -28,55 +28,25 @@ interface PostCardProps {
 export function PostCard({ post }: PostCardProps) {
   const { user } = useUser();
   const [isReporting, setIsReporting] = useState(false);
-  const currentUser = useQuery(api.users.readUser, user?.id ? { clerkId: user.id } : "skip");
+  const [showReportReasons, setShowReportReasons] = useState(false);
   
-  const voteMutation = useMutation(api.posts.handleVote);
-  const deleteMutation = useMutation(api.posts.deleteUserPost);
+  const currentUser = useQuery(api.users.readUser, user?.id ? { clerkId: user.id } : "skip");
   const reportMutation = useMutation(api.posts.reportPost);
+  const deleteMutation = useMutation(api.posts.deleteUserPost);
+  const voteMutation = useMutation(api.posts.handleVote);
 
   const isOwner = currentUser?._id === post.userId;
 
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm("Delete this post permanently?")) return;
-    
-    const promise = deleteMutation({ postId: post.id as any, userId: currentUser!._id });
-    
-    toast.promise(promise, {
-        loading: 'Deleting post...',
-        success: 'Post deleted successfully',
-        error: 'Failed to delete post',
-    });
-  };
-
-  const handleReport = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleReportAction = async (reason: string) => {
     setIsReporting(true);
-    
     try {
-      await reportMutation({ postId: post.id as any });
-      toast.success("Post reported", {
-        description: "Our moderators will review this content shortly.",
-      });
+      await reportMutation({ postId: post.id as any, reason });
+      toast.success("Report Submitted", { description: `Flagged for: ${reason}` });
+      setShowReportReasons(false);
     } catch (err) {
-      toast.error("Could not report", {
-        description: "Please try again later.",
-      });
+      toast.error("Failed to report");
     } finally {
       setIsReporting(false);
-    }
-  };
-
-  const handleVoteAction = async (type: "green" | "red") => {
-    if (!currentUser) return;
-    try {
-      await voteMutation({
-        postId: post.id as any,
-        userId: currentUser._id,
-        voteType: type,
-      });
-    } catch (err) {
-      console.error("Vote failed", err);
     }
   };
 
@@ -84,22 +54,41 @@ export function PostCard({ post }: PostCardProps) {
     <Card className="overflow-hidden rounded-2xl bg-gray-900/50 border-gray-800 shadow-2xl transition-all hover:border-gray-700 h-full flex flex-col p-0 border-none group relative">
       
       {/* ACTION BUTTONS */}
-      <div className="absolute top-2 right-2 z-10 flex gap-2">
+      <div className="absolute top-2 right-2 z-20 flex gap-2">
         {isOwner ? (
-          <button onClick={handleDelete} className="p-2 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white rounded-full transition-all backdrop-blur-md border border-red-600/30">
+          <button onClick={() => confirm("Delete?") && deleteMutation({ postId: post.id as any, userId: currentUser!._id })} className="p-2 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white rounded-full transition-all backdrop-blur-md border border-red-600/30">
             <Trash2 size={14} />
           </button>
         ) : (
           <button 
-            disabled={isReporting}
-            onClick={handleReport} 
-            className="p-2 bg-gray-950/40 hover:bg-red-600 text-gray-300 hover:text-white rounded-full transition-all backdrop-blur-md border border-white/10 disabled:opacity-50"
+            onClick={() => setShowReportReasons(!showReportReasons)} 
+            className={`p-2 rounded-full transition-all backdrop-blur-md border border-white/10 ${showReportReasons ? 'bg-red-600 text-white' : 'bg-gray-950/40 text-gray-300 hover:bg-red-600'}`}
           >
-            {isReporting ? <Loader2 size={14} className="animate-spin" /> : <Flag size={14} />}
+            {showReportReasons ? <X size={14} /> : <Flag size={14} />}
           </button>
         )}
       </div>
 
+      {/* 🎯 REPORT REASONS OVERLAY */}
+      {showReportReasons && (
+        <div className="absolute inset-0 z-10 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center animate-in fade-in duration-200">
+          <p className="text-white font-bold mb-3 text-sm">Why are you reporting this?</p>
+          <div className="grid grid-cols-1 gap-2 w-full max-w-[180px]">
+            {["Inappropriate Content", "Spam", "Harassment", "Fake Profile"].map((reason) => (
+              <button
+                key={reason}
+                disabled={isReporting}
+                onClick={() => handleReportAction(reason)}
+                className="text-[11px] py-2 px-3 bg-gray-800 hover:bg-red-600 text-white rounded-lg transition-colors border border-gray-700 flex items-center justify-center"
+              >
+                {isReporting ? <Loader2 size={12} className="animate-spin" /> : reason}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 1. Image Header */}
       <div className="relative aspect-square w-full bg-gray-800 m-0 p-0 overflow-hidden shrink-0">
         <Image src={post.image} alt={post.name} fill className="object-cover block transition-transform duration-500 group-hover:scale-110" unoptimized />
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gray-950 via-gray-950/40 to-transparent p-3">
@@ -108,17 +97,18 @@ export function PostCard({ post }: PostCardProps) {
         </div>
       </div>
 
+      {/* 2. Content Section */}
       <div className="p-3 pt-2 sm:p-4 sm:pt-3 flex flex-col flex-1 justify-between space-y-2.5">
         <p className="text-gray-300 text-[11px] sm:text-sm leading-snug line-clamp-2">{post.context}</p>
         <div className="flex items-center justify-between pt-2 border-t border-gray-800/40 mt-auto">
           <div className="flex gap-2 sm:gap-4">
-            <button onClick={(e) => { e.stopPropagation(); handleVoteAction("green"); }} className="flex items-center gap-1 group/btn bg-transparent border-none outline-none">
+            <button onClick={(e) => { e.stopPropagation(); }} className="flex items-center gap-1 group/btn bg-transparent border-none outline-none">
               <div className="p-1 rounded-full bg-green-500/10 text-green-500 group-hover/btn:bg-green-500 transition-colors">
                 <CheckCircle2 size={14} className="sm:w-[16px] sm:h-[16px]" />
               </div>
               <span className="text-[11px] sm:text-sm font-bold text-green-500">{post.greenFlags}</span>
             </button>
-            <button onClick={(e) => { e.stopPropagation(); handleVoteAction("red"); }} className="flex items-center gap-1 group/btn bg-transparent border-none outline-none">
+            <button onClick={(e) => { e.stopPropagation(); }} className="flex items-center gap-1 group/btn bg-transparent border-none outline-none">
               <div className="p-1 rounded-full bg-red-500/10 text-red-500 group-hover/btn:bg-red-500 transition-colors">
                 <AlertCircle size={14} className="sm:w-[16px] sm:h-[16px]" />
               </div>

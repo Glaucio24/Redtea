@@ -66,7 +66,7 @@ export const handleVote = mutation({
     }
 });
 
-// 🎯 NEW: This matches the 'deleteUserPost' name your PostCard is looking for
+//his matches the 'deleteUserPost' name your PostCard is looking for
 export const deleteUserPost = mutation({
   args: { 
     postId: v.id("posts"),
@@ -110,7 +110,10 @@ export const deletePost = mutation({
 });
 
 export const reportPost = mutation({
-  args: { postId: v.id("posts") },
+  args: { 
+    postId: v.id("posts"),
+    reason: v.string(), // "Inappropriate Content", "Spam", "Harassment", etc.
+  },
   handler: async (ctx, args) => {
     const post = await ctx.db.get(args.postId);
     if (!post) throw new Error("Post not found");
@@ -122,11 +125,14 @@ export const reportPost = mutation({
       isReported: true,
     });
 
+    // 🎯 The Admin will see this in the adminActions table
     await ctx.db.insert("adminActions", {
       actionType: "report_post",
       targetPostId: args.postId,
       timestamp: Date.now(),
       adminId: "user_flagged",
+      // We can store the reason in a text field if you have one, 
+      // or just log it as part of the action metadata.
     });
     
     return { success: true };

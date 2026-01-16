@@ -43,6 +43,7 @@ export default function CommunityFeedPage() {
               <PostCard 
                 post={{
                   id: post._id,
+                  userId: post.userId,
                   image: post.imageUrl || "/placeholder.svg",
                   name: post.name,
                   age: post.age,

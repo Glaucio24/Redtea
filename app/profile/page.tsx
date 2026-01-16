@@ -111,6 +111,7 @@ export default function ProfilePage() {
                 key={post._id} 
                 post={{
                   id: post._id,
+                  userId: post.userId,
                   image: post.imageUrl || "/placeholder.svg",
                   name: post.name,
                   age: post.age,
