@@ -66,9 +66,38 @@ export const handleVote = mutation({
     }
 });
 
+// 🎯 NEW: This matches the 'deleteUserPost' name your PostCard is looking for
+export const deleteUserPost = mutation({
+  args: { 
+    postId: v.id("posts"),
+    userId: v.id("users") 
+  },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.postId);
+    if (!post) throw new Error("Post not found");
+    
+    // Security check: only the creator can delete
+    if (post.userId !== args.userId) {
+      throw new Error("You are not authorized to delete this post");
+    }
+
+    // Clean up image from storage if it exists
+    if (post.fileId) {
+      await ctx.storage.delete(post.fileId);
+    }
+
+    await ctx.db.delete(args.postId);
+    return { success: true };
+  },
+});
+
+// Keep this for admin use if needed, or you can remove it
 export const deletePost = mutation({
   args: { adminClerkId: v.string(), postId: v.id("posts") },
   handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.postId);
+    if (post?.fileId) await ctx.storage.delete(post.fileId);
+    
     await ctx.db.delete(args.postId);
     await ctx.db.insert("adminActions", {
       adminId: args.adminClerkId,
@@ -76,6 +105,30 @@ export const deletePost = mutation({
       targetPostId: args.postId,
       timestamp: Date.now(),
     });
+    return { success: true };
+  },
+});
+
+export const reportPost = mutation({
+  args: { postId: v.id("posts") },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.postId);
+    if (!post) throw new Error("Post not found");
+
+    const currentReports = post.reportCount || 0;
+
+    await ctx.db.patch(args.postId, {
+      reportCount: currentReports + 1,
+      isReported: true,
+    });
+
+    await ctx.db.insert("adminActions", {
+      actionType: "report_post",
+      targetPostId: args.postId,
+      timestamp: Date.now(),
+      adminId: "user_flagged",
+    });
+    
     return { success: true };
   },
 });
@@ -89,7 +142,6 @@ export const getFeed = query({
         return await Promise.all(rawPosts.map(async (post) => {
             const creator = await ctx.db.get(post.userId);
 
-            // 🎯 NEW: Get the real URL for the image
             const imageUrl = post.fileId 
                 ? await ctx.storage.getUrl(post.fileId) 
                 : null;
@@ -101,8 +153,36 @@ export const getFeed = query({
             
             return {
                 ...post,
-                imageUrl, // Pass this to PostCard
+                imageUrl, 
                 creatorName: creator?.pseudonym || "Anonymous",
+                repliesCount: comments.length,
+            };
+        }));
+    }
+});
+
+export const getUserPosts = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        const rawPosts = await ctx.db
+            .query("posts")
+            .withIndex("byUserId", (q) => q.eq("userId", args.userId))
+            .order("desc")
+            .collect();
+
+        return await Promise.all(rawPosts.map(async (post) => {
+            const imageUrl = post.fileId 
+                ? await ctx.storage.getUrl(post.fileId) 
+                : null;
+
+            const comments = await ctx.db
+                .query("comments")
+                .withIndex("byPostId", (q) => q.eq("postId", post._id))
+                .collect();
+
+            return {
+                ...post,
+                imageUrl,
                 repliesCount: comments.length,
             };
         }));
