@@ -11,26 +11,36 @@ export const readUser = query({
   },
 });
 
+// 🎯 FIX: Updated to count flags the user GAVE to others
 export const getUserStats = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    const posts = await ctx.db
+    // 1. Get posts owned by the user
+    const myPosts = await ctx.db
       .query("posts")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .withIndex("byUserId", (q) => q.eq("userId", args.userId))
       .collect();
 
-    let totalGreen = 0;
-    let totalRed = 0;
-    posts.forEach((p) => {
-      totalGreen += p.greenFlags;
-      totalRed += p.redFlags;
+    // 2. Scan ALL posts to see what this user has voted on
+    const allPosts = await ctx.db.query("posts").collect();
+    
+    let totalGreenGiven = 0;
+    let totalRedGiven = 0;
+
+    allPosts.forEach((post) => {
+      // Check the voters array inside each post
+      const userVote = post.voters?.find((voter: any) => voter.userId === args.userId);
+      if (userVote) {
+        if (userVote.voteType === "green") totalGreenGiven++;
+        if (userVote.voteType === "red") totalRedGiven++;
+      }
     });
 
     return {
-      postCount: posts.length,
-      greenFlags: totalGreen,
-      redFlags: totalRed,
-      posts: posts
+      postCount: myPosts.length,
+      greenFlags: totalGreenGiven, // This is now flags YOU gave
+      redFlags: totalRedGiven,     // This is now flags YOU gave
+      posts: myPosts
     };
   },
 });

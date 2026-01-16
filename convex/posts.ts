@@ -2,6 +2,100 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 
+// --- QUERIES ---
+
+/**
+ * 🎯 LIVE REFRESH: This query is used by the PostCard to get 
+ * instant updates for a single post when someone votes.
+ */
+export const getPostById = query({
+  args: { postId: v.id("posts") },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.postId);
+    if (!post) return null;
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("byPostId", (q) => q.eq("postId", post._id))
+      .collect();
+    return { 
+      ...post, 
+      repliesCount: comments.length 
+    };
+  },
+});
+
+/**
+ * Fetches all posts for the community feed.
+ */
+export const getFeed = query({
+    handler: async (ctx) => {
+        const rawPosts = await ctx.db.query("posts").order("desc").collect();
+        return await Promise.all(rawPosts.map(async (post) => {
+            const creator = await ctx.db.get(post.userId);
+            const imageUrl = post.fileId ? await ctx.storage.getUrl(post.fileId) : null;
+            const comments = await ctx.db
+                .query("comments")
+                .withIndex("byPostId", (q) => q.eq("postId", post._id))
+                .collect();
+            return {
+                ...post,
+                imageUrl, 
+                creatorName: creator?.pseudonym || "Anonymous",
+                repliesCount: comments.length,
+            };
+        }));
+    }
+});
+
+/**
+ * 🎯 PROFILE POSTS: Fetches only the posts created by a specific user.
+ */
+export const getUserPosts = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        const rawPosts = await ctx.db
+            .query("posts")
+            .withIndex("byUserId", (q) => q.eq("userId", args.userId))
+            .order("desc")
+            .collect();
+
+        return await Promise.all(rawPosts.map(async (post) => {
+            const imageUrl = post.fileId ? await ctx.storage.getUrl(post.fileId) : null;
+            const comments = await ctx.db
+                .query("comments")
+                .withIndex("byPostId", (q) => q.eq("postId", post._id))
+                .collect();
+            return {
+                ...post,
+                imageUrl,
+                repliesCount: comments.length,
+            };
+        }));
+    }
+});
+
+export const getReportedPosts = query({
+  args: { adminClerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("byClerkId", (q) => q.eq("clerkId", args.adminClerkId))
+      .unique();
+    if (!user || user.role !== "admin") return [];
+
+    const reported = await ctx.db
+      .query("posts")
+      .filter((q) => q.eq(q.field("isReported"), true))
+      .order("desc")
+      .collect();
+
+    return await Promise.all(reported.map(async (p) => ({
+        ...p,
+        imageUrl: p.fileId ? await ctx.storage.getUrl(p.fileId as Id<"_storage">) : null,
+    })));
+  }
+});
+
 // --- MUTATIONS ---
 
 export const createPost = mutation({
@@ -33,6 +127,8 @@ export const createPost = mutation({
             greenFlags: 0,
             redFlags: 0,
             voters: [], 
+            reportCount: 0,
+            isReported: false,
             createdAt: Date.now(),
         });
     }
@@ -66,53 +162,10 @@ export const handleVote = mutation({
     }
 });
 
-//his matches the 'deleteUserPost' name your PostCard is looking for
-export const deleteUserPost = mutation({
-  args: { 
-    postId: v.id("posts"),
-    userId: v.id("users") 
-  },
-  handler: async (ctx, args) => {
-    const post = await ctx.db.get(args.postId);
-    if (!post) throw new Error("Post not found");
-    
-    // Security check: only the creator can delete
-    if (post.userId !== args.userId) {
-      throw new Error("You are not authorized to delete this post");
-    }
-
-    // Clean up image from storage if it exists
-    if (post.fileId) {
-      await ctx.storage.delete(post.fileId);
-    }
-
-    await ctx.db.delete(args.postId);
-    return { success: true };
-  },
-});
-
-// Keep this for admin use if needed, or you can remove it
-export const deletePost = mutation({
-  args: { adminClerkId: v.string(), postId: v.id("posts") },
-  handler: async (ctx, args) => {
-    const post = await ctx.db.get(args.postId);
-    if (post?.fileId) await ctx.storage.delete(post.fileId);
-    
-    await ctx.db.delete(args.postId);
-    await ctx.db.insert("adminActions", {
-      adminId: args.adminClerkId,
-      actionType: "delete_post",
-      targetPostId: args.postId,
-      timestamp: Date.now(),
-    });
-    return { success: true };
-  },
-});
-
 export const reportPost = mutation({
   args: { 
     postId: v.id("posts"),
-    reason: v.string(), // "Inappropriate Content", "Spam", "Harassment", etc.
+    reason: v.string() 
   },
   handler: async (ctx, args) => {
     const post = await ctx.db.get(args.postId);
@@ -125,72 +178,41 @@ export const reportPost = mutation({
       isReported: true,
     });
 
-    // 🎯 The Admin will see this in the adminActions table
     await ctx.db.insert("adminActions", {
       actionType: "report_post",
       targetPostId: args.postId,
       timestamp: Date.now(),
-      adminId: "user_flagged",
-      // We can store the reason in a text field if you have one, 
-      // or just log it as part of the action metadata.
+      adminId: "system_flag", 
     });
     
     return { success: true };
   },
 });
 
-// --- QUERIES ---
-
-export const getFeed = query({
-    handler: async (ctx) => {
-        const rawPosts = await ctx.db.query("posts").order("desc").collect();
-
-        return await Promise.all(rawPosts.map(async (post) => {
-            const creator = await ctx.db.get(post.userId);
-
-            const imageUrl = post.fileId 
-                ? await ctx.storage.getUrl(post.fileId) 
-                : null;
-
-            const comments = await ctx.db
-                .query("comments")
-                .withIndex("byPostId", (q) => q.eq("postId", post._id))
-                .collect();
-            
-            return {
-                ...post,
-                imageUrl, 
-                creatorName: creator?.pseudonym || "Anonymous",
-                repliesCount: comments.length,
-            };
-        }));
-    }
+export const deletePost = mutation({
+  args: { adminClerkId: v.string(), postId: v.id("posts") },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.postId);
+    if (post?.fileId) await ctx.storage.delete(post.fileId as Id<"_storage">);
+    
+    await ctx.db.delete(args.postId);
+    await ctx.db.insert("adminActions", {
+      adminId: args.adminClerkId,
+      actionType: "delete_post",
+      targetPostId: args.postId,
+      timestamp: Date.now(),
+    });
+    return { success: true };
+  },
 });
 
-export const getUserPosts = query({
-    args: { userId: v.id("users") },
-    handler: async (ctx, args) => {
-        const rawPosts = await ctx.db
-            .query("posts")
-            .withIndex("byUserId", (q) => q.eq("userId", args.userId))
-            .order("desc")
-            .collect();
-
-        return await Promise.all(rawPosts.map(async (post) => {
-            const imageUrl = post.fileId 
-                ? await ctx.storage.getUrl(post.fileId) 
-                : null;
-
-            const comments = await ctx.db
-                .query("comments")
-                .withIndex("byPostId", (q) => q.eq("postId", post._id))
-                .collect();
-
-            return {
-                ...post,
-                imageUrl,
-                repliesCount: comments.length,
-            };
-        }));
-    }
+export const deleteUserPost = mutation({
+  args: { postId: v.id("posts"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.postId);
+    if (!post || post.userId !== args.userId) throw new Error("Unauthorized");
+    if (post.fileId) await ctx.storage.delete(post.fileId as Id<"_storage">);
+    await ctx.db.delete(args.postId);
+    return { success: true };
+  },
 });

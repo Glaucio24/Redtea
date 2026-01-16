@@ -34,7 +34,7 @@ export const getAllUsersWithVerificationStatus = query({
       .order("desc")
       .collect();
 
-    // 🎯 FIX: This maps through users and turns Storage IDs into viewable links
+    // 🎯 Maps through users and turns Storage IDs into viewable links
     return await Promise.all(
       users.map(async (u) => ({
         ...u,
@@ -65,7 +65,7 @@ export const approveUser = mutation({
   },
 });
 
-// --- Mutation: Deny and AUTO-DELETE (as requested) ---
+// --- Mutation: Deny and AUTO-DELETE (including all user posts) ---
 export const denyUser = mutation({
   args: { targetUserId: v.id("users") },
   handler: async (ctx, args) => {
@@ -74,7 +74,22 @@ export const denyUser = mutation({
     const userToDelete = await ctx.db.get(args.targetUserId);
     if (!userToDelete) throw new Error("User record not found");
 
-    // 1. Delete actual files from storage to save space/protect privacy
+    // 1. Find and Delete all Posts created by this user
+    const userPosts = await ctx.db
+      .query("posts")
+      .withIndex("byUserId", (q) => q.eq("userId", args.targetUserId))
+      .collect();
+
+    for (const post of userPosts) {
+      // Delete post image from storage if it exists
+      if (post.fileId) {
+        await ctx.storage.delete(post.fileId as Id<"_storage">);
+      }
+      // Delete the post record
+      await ctx.db.delete(post._id);
+    }
+
+    // 2. Delete user's verification files from storage
     if (userToDelete.selfieUrl) {
       await ctx.storage.delete(userToDelete.selfieUrl as Id<"_storage">);
     }
@@ -82,9 +97,9 @@ export const denyUser = mutation({
       await ctx.storage.delete(userToDelete.idUrl as Id<"_storage">);
     }
 
-    // 2. Delete the user from the database
+    // 3. Delete the user record from the database
     await ctx.db.delete(args.targetUserId);
 
-    return { success: true, message: "User rejected and records purged." };
+    return { success: true, message: "User rejected and all associated content purged." };
   },
 });
