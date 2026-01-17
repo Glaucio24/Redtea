@@ -15,8 +15,10 @@ export default function SearchPage() {
   const [filterBy, setFilterBy] = useState("all")
   const [cityFilter, setCityFilter] = useState("all")
 
+  // Fetch real data from Convex
   const posts = useQuery(api.posts.getFeed);
 
+  // Get unique cities
   const availableCities = useMemo(() => {
     if (!posts) return [];
     const cities = [...new Set(posts.map((post) => post.city))].sort()
@@ -45,7 +47,6 @@ export default function SearchPage() {
       filtered = filtered.filter((post) => {
         const total = post.greenFlags + post.redFlags
         const greenRatio = total > 0 ? post.greenFlags / total : 0
-
         switch (filterBy) {
           case "green-majority": return greenRatio > 0.6
           case "red-majority": return greenRatio < 0.4
@@ -78,91 +79,87 @@ export default function SearchPage() {
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto text-white bg-transparent">
+      {/* 🎯 Restored Original Heading Style */}
       <div className="mb-6 lg:mb-8 px-2">
-        <h1 className="text-2xl lg:text-3xl font-bold mb-1">Search & Filter</h1>
-        <p className="text-gray-400 text-xs sm:text-sm">Find specific stories across the community</p>
+        <h1 className="text-2xl lg:text-3xl font-bold mb-2">Search & Filter</h1>
+        <p className="text-gray-400 text-sm lg:text-base">Find specific posts and filter by community feedback</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
-        {/* Search Bar */}
+        {/* Search Bar with Red Glow */}
         <Card className="lg:col-span-2 bg-gray-900/50 border-gray-800 rounded-2xl border-none shadow-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-gray-300 text-sm uppercase tracking-wider">
-              <SearchIcon size={16} className="text-red-500" />
-              Keyword Search
+          <CardHeader className="pb-3 lg:pb-4">
+            <CardTitle className="flex items-center gap-2 text-white text-lg lg:text-xl font-bold">
+              <SearchIcon size={20} className="text-red-600" />
+              Search Posts
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="relative">
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+            <div className="relative group">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 transition-colors group-focus-within:text-red-500" size={18} />
               <Input
                 placeholder="Search name, city, or story..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-600 focus:border-red-500/50 rounded-xl"
+                className="pl-10 bg-gray-950 border-gray-800 text-white placeholder:text-gray-700 rounded-xl transition-all duration-300 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 focus:shadow-[0_0_20px_rgba(220,38,38,0.15)] h-11"
               />
             </div>
           </CardContent>
         </Card>
 
-        {/* City Filter */}
+        {/* Location Selector */}
         <Card className="bg-gray-900/50 border-gray-800 rounded-2xl border-none shadow-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-gray-300 text-sm uppercase tracking-wider">
-              <MapPin size={16} className="text-red-500" />
-              Location
+          <CardHeader className="pb-3 lg:pb-4">
+            <CardTitle className="flex items-center gap-2 text-white text-lg lg:text-xl font-bold">
+              <MapPin size={20} className="text-red-600" />
+              City
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Select value={cityFilter} onValueChange={setCityFilter}>
-              {/* 🎯 Added text-white here */}
-              <SelectTrigger className="bg-gray-800/50 border-gray-700 rounded-xl text-white">
+              <SelectTrigger className="bg-gray-950 border-gray-800 rounded-xl text-white h-11">
                 <SelectValue placeholder="All Cities" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                <SelectItem value="all" className="focus:bg-red-600 focus:text-white">All Cities</SelectItem>
+              <SelectContent className="bg-gray-950 border-gray-800 text-white">
+                <SelectItem value="all">All Cities</SelectItem>
                 {availableCities.map((city) => (
-                  <SelectItem key={city} value={city} className="focus:bg-red-600 focus:text-white">
-                    {city}
-                  </SelectItem>
+                  <SelectItem key={city} value={city}>{city}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </CardContent>
         </Card>
 
-        {/* Advanced Filters */}
+        {/* Sorting/Filters */}
         <Card className="bg-gray-900/50 border-gray-800 rounded-2xl border-none shadow-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-gray-300 text-sm uppercase tracking-wider">
-              <Filter size={16} className="text-red-500" />
-              Sort & Filter
+          <CardHeader className="pb-3 lg:pb-4">
+            <CardTitle className="flex items-center gap-2 text-white text-lg lg:text-xl font-bold">
+              <Filter size={20} className="text-red-600" />
+              Filters
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-2">
+          <CardContent className="grid grid-cols-1 gap-3">
             <Select value={sortBy} onValueChange={setSortBy}>
-              {/* 🎯 Added text-white here */}
-              <SelectTrigger className="bg-gray-800/50 border-gray-700 rounded-xl text-xs text-white">
+              <SelectTrigger className="bg-gray-950 border-gray-800 rounded-xl text-sm text-white h-10">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                <SelectItem value="recent" className="focus:bg-red-600 focus:text-white">Recent</SelectItem>
-                <SelectItem value="replies" className="focus:bg-red-600 focus:text-white">Replies</SelectItem>
-                <SelectItem value="red-flags" className="focus:bg-red-600 focus:text-white">Red Flags</SelectItem>
-                <SelectItem value="green-flags" className="focus:bg-red-600 focus:text-white">Green Flags</SelectItem>
+              <SelectContent className="bg-gray-950 border-gray-800 text-white">
+                <SelectItem value="recent">Most Recent</SelectItem>
+                <SelectItem value="replies">Most Replies</SelectItem>
+                <SelectItem value="red-flags">Most Red Flags</SelectItem>
+                <SelectItem value="green-flags">Most Green Flags</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={filterBy} onValueChange={setFilterBy}>
-              {/* 🎯 Added text-white here */}
-              <SelectTrigger className="bg-gray-800/50 border-gray-700 rounded-xl text-xs text-white">
+              <SelectTrigger className="bg-gray-950 border-gray-800 rounded-xl text-sm text-white h-10">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                <SelectItem value="all" className="focus:bg-red-600 focus:text-white">All Flags</SelectItem>
-                <SelectItem value="green-majority" className="focus:bg-red-600 focus:text-white">Green Majority</SelectItem>
-                <SelectItem value="red-majority" className="focus:bg-red-600 focus:text-white">Red Majority</SelectItem>
-                <SelectItem value="controversial" className="focus:bg-red-600 focus:text-white">Controversial</SelectItem>
+              <SelectContent className="bg-gray-950 border-gray-800 text-white">
+                <SelectItem value="all">All Posts</SelectItem>
+                <SelectItem value="green-majority">Green Flag Majority</SelectItem>
+                <SelectItem value="red-majority">Red Flag Majority</SelectItem>
+                <SelectItem value="controversial">Controversial</SelectItem>
               </SelectContent>
             </Select>
           </CardContent>
@@ -172,47 +169,47 @@ export default function SearchPage() {
       {/* Results Section */}
       <div className="space-y-6">
         <div className="flex items-center justify-between px-2">
-          <h2 className="text-xl font-bold uppercase tracking-tight">
-            Results <span className="text-red-500 ml-1">({filteredAndSortedPosts.length})</span>
+          {/* 🎯 Restored Original Results Heading Style */}
+          <h2 className="text-xl font-bold text-white">
+            Search Results <span className="text-red-600 ml-1">({filteredAndSortedPosts.length})</span>
           </h2>
           {(searchQuery || cityFilter !== "all" || filterBy !== "all") && (
             <button
-              onClick={() => {
-                setSearchQuery(""); setCityFilter("all"); setFilterBy("all"); setSortBy("recent");
-              }}
-              className="text-[10px] tracking-widest text-red-500 hover:text-red-400 flex items-center gap-1 font-black"
+              onClick={() => { setSearchQuery(""); setCityFilter("all"); setFilterBy("all"); setSortBy("recent"); }}
+              className="text-sm text-gray-400 hover:text-white transition-colors"
             >
-              <XCircle size={14} /> CLEAR FILTERS
+              Clear all filters
             </button>
           )}
         </div>
 
-        {filteredAndSortedPosts.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-            {filteredAndSortedPosts.map((post) => (
-              <PostCard 
-                key={post._id} 
-                isProfileView={false}
-                post={{
-                  id: post._id,
-                  userId: post.userId,
-                  image: post.imageUrl || "/placeholder.svg",
-                  name: post.name,
-                  age: post.age,
-                  city: post.city,
-                  context: post.text,
-                  greenFlags: post.greenFlags,
-                  redFlags: post.redFlags,
-                  replies: post.repliesCount || 0,
-                  timestamp: "", 
-                }} 
-              />
-            ))}
-          </div>
-        ) : (
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+          {filteredAndSortedPosts.map((post) => (
+            <PostCard 
+              key={post._id} 
+              isProfileView={false}
+              post={{
+                id: post._id,
+                userId: post.userId,
+                image: post.imageUrl || "/placeholder.svg",
+                name: post.name,
+                age: post.age,
+                city: post.city,
+                context: post.text,
+                greenFlags: post.greenFlags,
+                redFlags: post.redFlags,
+                replies: post.repliesCount || 0,
+                timestamp: "", 
+              }} 
+            />
+          ))}
+        </div>
+
+        {filteredAndSortedPosts.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 bg-gray-900/20 rounded-3xl border border-dashed border-gray-800">
             <SearchIcon className="w-16 h-16 text-gray-800 mb-4" />
-            <h3 className="text-xl font-medium text-gray-500 italic">No matches found</h3>
+            <h3 className="text-lg lg:text-xl font-medium mb-2 text-white">No results found</h3>
+            <p className="text-gray-400 text-sm">Try adjusting your search criteria or filters</p>
           </div>
         )}
       </div>

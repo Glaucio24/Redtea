@@ -41,7 +41,7 @@ export default function ProfilePage() {
                 <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight break-all sm:break-normal">
                     {userData.pseudonym}
                 </h2>
-                <p className="text-red-500 text-[10px] sm:text-xs font-mono uppercase mt-1 tracking-widest">Verified Anonymous</p>
+                <p className="text-red-500 text-[10px] sm:text-xs font-mono uppercase mt-1 tracking-widest">Verified Anonymous Name</p>
             </div>
         </CardContent>
       </Card>
@@ -65,7 +65,7 @@ export default function ProfilePage() {
             {myPosts.map((post) => (
               <PostCard 
                 key={post._id} 
-                isProfileView={true} // 🎯 Only show delete button here
+                isProfileView={true} // Only show delete button here
                 post={{
                   id: post._id,
                   userId: post.userId,

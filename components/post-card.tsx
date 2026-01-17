@@ -24,7 +24,7 @@ interface PostCardProps {
     timestamp: string;
     userId: string; 
   };
-  isProfileView?: boolean; // 🎯 This fixes your TypeScript error
+  isProfileView?: boolean;
 }
 
 export function PostCard({ post, isProfileView = false }: PostCardProps) {
@@ -32,7 +32,7 @@ export function PostCard({ post, isProfileView = false }: PostCardProps) {
   const [isReporting, setIsReporting] = useState(false);
   const [showReportReasons, setShowReportReasons] = useState(false);
   
-  // 🎯 LIVE SYNC: This makes the numbers change without refreshing
+  // LIVE SYNC: This makes the numbers change without refreshing
   const livePost = useQuery(api.posts.getPostById, { postId: post.id as Id<"posts"> });
   const currentUser = useQuery(api.users.readUser, user?.id ? { clerkId: user.id } : "skip");
   
