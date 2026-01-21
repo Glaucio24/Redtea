@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PostCard } from "@/components/post-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link"; // 🎯 Added
 
 export default function CommunityFeedPage() {
   const posts = useQuery(api.posts.getFeed);
@@ -24,23 +25,24 @@ export default function CommunityFeedPage() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-2 gap-x-2 gap-y-3 sm:gap-4 lg:gap-6 pt-0">
           {posts.map((post) => (
-            <PostCard 
-              key={post._id} 
-              isProfileView={false} // 🎯 Shows Report button here
-              post={{
-                id: post._id,
-                userId: post.userId,
-                image: post.imageUrl || "/placeholder.svg",
-                name: post.name,
-                age: post.age,
-                city: post.city,
-                context: post.text,
-                greenFlags: post.greenFlags,
-                redFlags: post.redFlags,
-                replies: post.repliesCount,
-                timestamp: "", 
-              }} 
-            />
+            <Link key={post._id} href={`/post/${post._id}`} className="block">
+              <PostCard 
+                isProfileView={false}
+                post={{
+                  id: post._id,
+                  userId: post.userId,
+                  image: post.imageUrl || "/placeholder.svg",
+                  name: post.name,
+                  age: post.age,
+                  city: post.city,
+                  context: post.text,
+                  greenFlags: post.greenFlags,
+                  redFlags: post.redFlags,
+                  replies: post.repliesCount,
+                  timestamp: "", 
+                }} 
+              />
+            </Link>
           ))}
         </div>
       )}

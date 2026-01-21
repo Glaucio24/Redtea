@@ -77,7 +77,7 @@ export default function SubmitPostPage() {
     <div className="max-w-2xl mx-auto p-4 lg:p-8">
       <h1 className="text-3xl font-bold text-white mb-8">Spill the Tea</h1>
       
-      <Card className="bg-gray-900 border-gray-800 p-6 shadow-xl">
+      <Card className="bg-gray-950 border-gray-800 p-6 shadow-xl">
         <form onSubmit={handleSubmit} className="space-y-6">
 
           <div className="space-y-2">

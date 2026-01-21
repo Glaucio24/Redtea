@@ -8,6 +8,7 @@ import { SearchIcon, Filter, MapPin, Loader2, XCircle } from "lucide-react"
 import { PostCard } from "@/components/post-card"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import Link from "next/link" // 🎯 Added for navigation
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -79,14 +80,13 @@ export default function SearchPage() {
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto text-white bg-transparent">
-      {/* 🎯 Restored Original Heading Style */}
       <div className="mb-6 lg:mb-8 px-2">
         <h1 className="text-2xl lg:text-3xl font-bold mb-2">Search & Filter</h1>
         <p className="text-gray-400 text-sm lg:text-base">Find specific posts and filter by community feedback</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
-        {/* Search Bar with Red Glow */}
+        {/* Search Bar */}
         <Card className="lg:col-span-2 bg-gray-900/50 border-gray-800 rounded-2xl border-none shadow-xl">
           <CardHeader className="pb-3 lg:pb-4">
             <CardTitle className="flex items-center gap-2 text-white text-lg lg:text-xl font-bold">
@@ -169,7 +169,6 @@ export default function SearchPage() {
       {/* Results Section */}
       <div className="space-y-6">
         <div className="flex items-center justify-between px-2">
-          {/* 🎯 Restored Original Results Heading Style */}
           <h2 className="text-xl font-bold text-white">
             Search Results <span className="text-red-600 ml-1">({filteredAndSortedPosts.length})</span>
           </h2>
@@ -185,23 +184,29 @@ export default function SearchPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
           {filteredAndSortedPosts.map((post) => (
-            <PostCard 
+            /* 🎯 Wrapped Card in Link for Navigation */
+            <Link 
               key={post._id} 
-              isProfileView={false}
-              post={{
-                id: post._id,
-                userId: post.userId,
-                image: post.imageUrl || "/placeholder.svg",
-                name: post.name,
-                age: post.age,
-                city: post.city,
-                context: post.text,
-                greenFlags: post.greenFlags,
-                redFlags: post.redFlags,
-                replies: post.repliesCount || 0,
-                timestamp: "", 
-              }} 
-            />
+              href={`/post/${post._id}`}
+              className="block transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <PostCard 
+                isProfileView={false}
+                post={{
+                  id: post._id,
+                  userId: post.userId,
+                  image: post.imageUrl || "/placeholder.svg",
+                  name: post.name,
+                  age: post.age,
+                  city: post.city,
+                  context: post.text,
+                  greenFlags: post.greenFlags,
+                  redFlags: post.redFlags,
+                  replies: post.repliesCount || 0,
+                  timestamp: "", 
+                }} 
+              />
+            </Link>
           ))}
         </div>
 

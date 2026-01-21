@@ -72,7 +72,7 @@ export function PostCard({ post, isProfileView = false }: PostCardProps) {
   };
 
   return (
-    <Card className="overflow-hidden rounded-2xl bg-gray-900/50 border-gray-800 shadow-2xl transition-all hover:border-gray-700 h-full flex flex-col p-0 border-none group relative">
+    <Card className="overflow-hidden rounded-2xl bg-gray-950 border-gray-800 shadow-2xl transition-all hover:border-gray-700 h-full flex flex-col p-0 border-none group relative">
       
       {/* ACTION BUTTONS (REPORT / DELETE) */}
       <div className="absolute top-2 right-2 z-30 flex gap-2">
