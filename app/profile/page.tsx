@@ -29,7 +29,7 @@ export default function ProfilePage() {
         <p className="text-gray-400 text-xs sm:text-sm">Your anonymous identity and community stats</p>
       </div>
 
-      <Card className="bg-gray-900/50 border-gray-800 mb-6 lg:mb-8 rounded-3xl overflow-hidden shadow-2xl border-none">
+      <Card className="bg-gray-950 border-gray-800 mb-6 lg:mb-8 rounded-3xl overflow-hidden shadow-2xl border-none">
         <CardHeader className="bg-gradient-to-r from-red-900/20 to-transparent border-b border-gray-800/40 p-4 sm:p-6">
           <CardTitle className="text-white text-base lg:text-xl font-semibold uppercase tracking-wider">Active Pseudonym</CardTitle>
         </CardHeader>
@@ -47,10 +47,10 @@ export default function ProfilePage() {
       </Card>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6 mb-8">
-        <StatCard icon={<MessageSquare size={18} />} value={stats.postCount} label="My Posts" color="bg-blue-600/20" />
-        <StatCard icon={<ThumbsUp size={18} />} value={stats.greenFlags} label="Green Given" color="bg-green-600/20" />
-        <StatCard icon={<Flag size={18} />} value={stats.redFlags} label="Red Given" color="bg-red-600/20" />
-        <StatCard icon={<MessageSquare size={18} />} value={0} label="Replies" color="bg-purple-600/20" />
+        <StatCard icon={<MessageSquare size={18} />} value={stats.postCount} label="My Posts" color="bg-blue-600/50" />
+        <StatCard icon={<ThumbsUp size={18} />} value={stats.greenFlags} label="Green Given" color="bg-green-600/50" />
+        <StatCard icon={<Flag size={18} />} value={stats.redFlags} label="Red Given" color="bg-red-600/50" />
+        <StatCard icon={<MessageSquare size={18} />} value={0} label="Replies" color="bg-purple-600/50" />
       </div>
 
       <div className="space-y-4">

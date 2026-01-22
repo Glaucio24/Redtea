@@ -87,7 +87,7 @@ export default function SearchPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
         {/* Search Bar */}
-        <Card className="lg:col-span-2 bg-gray-900/50 border-gray-800 rounded-2xl border-none shadow-xl">
+        <Card className="lg:col-span-2 bg-gray-950 border-gray-800 rounded-2xl border-none shadow-xl">
           <CardHeader className="pb-3 lg:pb-4">
             <CardTitle className="flex items-center gap-2 text-white text-lg lg:text-xl font-bold">
               <SearchIcon size={20} className="text-red-600" />
@@ -101,14 +101,14 @@ export default function SearchPage() {
                 placeholder="Search name, city, or story..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-gray-950 border-gray-800 text-white placeholder:text-gray-700 rounded-xl transition-all duration-300 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 focus:shadow-[0_0_20px_rgba(220,38,38,0.15)] h-11"
+                className="pl-10 bg-gray-900/50 border-gray-800 text-white placeholder:text-gray-700 rounded-xl transition-all duration-300 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 focus:shadow-[0_0_20px_rgba(220,38,38,0.15)] h-11"
               />
             </div>
           </CardContent>
         </Card>
 
         {/* Location Selector */}
-        <Card className="bg-gray-900/50 border-gray-800 rounded-2xl border-none shadow-xl">
+        <Card className="bg-gray-950 border-gray-800 rounded-2xl border-none shadow-xl">
           <CardHeader className="pb-3 lg:pb-4">
             <CardTitle className="flex items-center gap-2 text-white text-lg lg:text-xl font-bold">
               <MapPin size={20} className="text-red-600" />
@@ -117,7 +117,7 @@ export default function SearchPage() {
           </CardHeader>
           <CardContent>
             <Select value={cityFilter} onValueChange={setCityFilter}>
-              <SelectTrigger className="bg-gray-950 border-gray-800 rounded-xl text-white h-11">
+              <SelectTrigger className="bg-gray-900/50 border-gray-800 rounded-xl text-white h-11">
                 <SelectValue placeholder="All Cities" />
               </SelectTrigger>
               <SelectContent className="bg-gray-950 border-gray-800 text-white">
@@ -131,7 +131,7 @@ export default function SearchPage() {
         </Card>
 
         {/* Sorting/Filters */}
-        <Card className="bg-gray-900/50 border-gray-800 rounded-2xl border-none shadow-xl">
+        <Card className="bg-gray-950 border-gray-800 rounded-2xl border-none shadow-xl">
           <CardHeader className="pb-3 lg:pb-4">
             <CardTitle className="flex items-center gap-2 text-white text-lg lg:text-xl font-bold">
               <Filter size={20} className="text-red-600" />
@@ -140,7 +140,7 @@ export default function SearchPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-3">
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="bg-gray-950 border-gray-800 rounded-xl text-sm text-white h-10">
+              <SelectTrigger className="bg-gray-900/50 border-gray-800 rounded-xl text-sm text-white h-10">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-gray-950 border-gray-800 text-white">
@@ -152,7 +152,7 @@ export default function SearchPage() {
             </Select>
 
             <Select value={filterBy} onValueChange={setFilterBy}>
-              <SelectTrigger className="bg-gray-950 border-gray-800 rounded-xl text-sm text-white h-10">
+              <SelectTrigger className="bg-gray-900/50 border-gray-800 rounded-xl text-sm text-white h-10">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-gray-950 border-gray-800 text-white">
