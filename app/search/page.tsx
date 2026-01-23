@@ -8,7 +8,7 @@ import { SearchIcon, Filter, MapPin, Loader2, XCircle } from "lucide-react"
 import { PostCard } from "@/components/post-card"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import Link from "next/link" // 🎯 Added for navigation
+import Link from "next/link" 
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -101,7 +101,7 @@ export default function SearchPage() {
                 placeholder="Search name, city, or story..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-gray-900/50 border-gray-800 text-white placeholder:text-gray-700 rounded-xl transition-all duration-300 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 focus:shadow-[0_0_20px_rgba(220,38,38,0.15)] h-11"
+                className="pl-10 bg-gray-800 border-gray-800 text-white placeholder:text-gray-300 rounded-xl transition-all duration-300 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 focus:shadow-[0_0_20px_rgba(220,38,38,0.15)] h-11"
               />
             </div>
           </CardContent>
@@ -117,7 +117,7 @@ export default function SearchPage() {
           </CardHeader>
           <CardContent>
             <Select value={cityFilter} onValueChange={setCityFilter}>
-              <SelectTrigger className="bg-gray-900/50 border-gray-800 rounded-xl text-white h-11">
+              <SelectTrigger className="bg-gray-800 border-gray-800 rounded-xl text-white h-11">
                 <SelectValue placeholder="All Cities" />
               </SelectTrigger>
               <SelectContent className="bg-gray-950 border-gray-800 text-white">
@@ -140,7 +140,7 @@ export default function SearchPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-3">
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="bg-gray-900/50 border-gray-800 rounded-xl text-sm text-white h-10">
+              <SelectTrigger className="bg-gray-800 border-gray-800 rounded-xl text-sm text-white h-10">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-gray-950 border-gray-800 text-white">
@@ -152,7 +152,7 @@ export default function SearchPage() {
             </Select>
 
             <Select value={filterBy} onValueChange={setFilterBy}>
-              <SelectTrigger className="bg-gray-900/50 border-gray-800 rounded-xl text-sm text-white h-10">
+              <SelectTrigger className="bg-gray-800 border-gray-800 rounded-xl text-sm text-white h-10">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-gray-950 border-gray-800 text-white">
@@ -184,7 +184,7 @@ export default function SearchPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
           {filteredAndSortedPosts.map((post) => (
-            /* 🎯 Wrapped Card in Link for Navigation */
+           
             <Link 
               key={post._id} 
               href={`/post/${post._id}`}
@@ -211,7 +211,7 @@ export default function SearchPage() {
         </div>
 
         {filteredAndSortedPosts.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 bg-gray-900/20 rounded-3xl border border-dashed border-gray-800">
+          <div className="flex flex-col items-center justify-center py-20 bg-gray-950 rounded-3xl border border-dashed border-gray-800">
             <SearchIcon className="w-16 h-16 text-gray-800 mb-4" />
             <h3 className="text-lg lg:text-xl font-medium mb-2 text-white">No results found</h3>
             <p className="text-gray-400 text-sm">Try adjusting your search criteria or filters</p>

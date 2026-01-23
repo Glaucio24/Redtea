@@ -80,7 +80,7 @@ export default function PostDetailPage() {
           <header className="px-1">
             {/* 🎯 Shrunk text for 360px mobile screens */}
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-1">Discussion</h1>
-            <p className="text-gray-400 text-[11px] sm:text-sm lg:text-base">Share your feedback anonymously</p>
+            <p className="text-gray-400 text-[11px] sm:text-sm lg:text-base">Share your feedback</p>
           </header>
           
           <form onSubmit={handleSubmitComment} className="relative group">
@@ -106,7 +106,7 @@ export default function PostDetailPage() {
             </h2>
             
             {comments.map((c) => (
-              <div key={c._id} className="bg-gray-900/30 border border-gray-800/40 p-4 sm:p-5 rounded-2xl">
+              <div key={c._id} className="bg-gray-950 border border-gray-800/40 p-4 sm:p-5 rounded-2xl">
                 <div className="flex justify-between items-center mb-2 sm:mb-3">
                   {/* 🎯 Extra small text for narrow phones */}
                   <span className="text-red-500 font-bold text-[10px] sm:text-xs uppercase tracking-wider">{c.userPseudonym}</span>

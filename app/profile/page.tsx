@@ -46,7 +46,7 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6 mb-8">
+      <div className="grid grid-c ols-2 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6 mb-8">
         <StatCard icon={<MessageSquare size={18} />} value={stats.postCount} label="My Posts" color="bg-blue-600/50" />
         <StatCard icon={<ThumbsUp size={18} />} value={stats.greenFlags} label="Green Given" color="bg-green-600/50" />
         <StatCard icon={<Flag size={18} />} value={stats.redFlags} label="Red Given" color="bg-red-600/50" />
@@ -59,7 +59,7 @@ export default function ProfilePage() {
         </div>
 
         {myPosts.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 border border-dashed border-gray-800 rounded-3xl">No posts yet.</div>
+          <div className="p-8 bg-gray-950 text-center text-gray-500 border border-dashed border-gray-800 rounded-3xl">No posts yet.</div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 lg:gap-6">
             {myPosts.map((post) => (
@@ -90,7 +90,7 @@ export default function ProfilePage() {
 
 function StatCard({ icon, value, label, color }: { icon: React.ReactNode, value: number, label: string, color: string }) {
   return (
-    <Card className="bg-gray-900/50 border-gray-800 rounded-2xl border-none shadow-lg">
+    <Card className="bg-gray-950 border-gray-800 rounded-2xl border-none shadow-lg">
       <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
         <div className={`p-1.5 sm:p-2 ${color} rounded-xl`}>{icon}</div>
         <div>

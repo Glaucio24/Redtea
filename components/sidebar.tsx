@@ -81,7 +81,7 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">Red Tea</h1>
-              <p className="text-xs text-gray-400">Anonymous Community</p>
+              {/* <p className="text-xs text-gray-400">Anonymous Community</p> */}
             </div>
           </div>
         </div>
