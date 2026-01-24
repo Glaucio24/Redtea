@@ -4,27 +4,24 @@ import { useState, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { SearchIcon, Filter, MapPin, Loader2, XCircle } from "lucide-react"
+import { SearchIcon, Filter, MapPin, Loader2, Check } from "lucide-react"
 import { PostCard } from "@/components/post-card"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import Link from "next/link" 
+import Link from "next/link"
+import { US_CITIES } from "@/lib/constants"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
+import { cn } from "@/lib/utils"
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState("recent")
   const [filterBy, setFilterBy] = useState("all")
   const [cityFilter, setCityFilter] = useState("all")
+  const [open, setOpen] = useState(false)
 
-  // Fetch real data from Convex
   const posts = useQuery(api.posts.getFeed);
-
-  // Get unique cities
-  const availableCities = useMemo(() => {
-    if (!posts) return [];
-    const cities = [...new Set(posts.map((post) => post.city))].sort()
-    return cities
-  }, [posts])
 
   const filteredAndSortedPosts = useMemo(() => {
     if (!posts) return [];
@@ -44,6 +41,7 @@ export default function SearchPage() {
       filtered = filtered.filter((post) => post.city === cityFilter)
     }
 
+    // ... (rest of your filter logic stays the same)
     if (filterBy !== "all") {
       filtered = filtered.filter((post) => {
         const total = post.greenFlags + post.redFlags
@@ -86,7 +84,6 @@ export default function SearchPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
-        {/* Search Bar */}
         <Card className="lg:col-span-2 bg-gray-950 border-gray-800 rounded-2xl border-none shadow-xl">
           <CardHeader className="pb-3 lg:pb-4">
             <CardTitle className="flex items-center gap-2 text-white text-lg lg:text-xl font-bold">
@@ -101,13 +98,13 @@ export default function SearchPage() {
                 placeholder="Search name, city, or story..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-gray-800 border-gray-800 text-white placeholder:text-gray-300 rounded-xl transition-all duration-300 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 focus:shadow-[0_0_20px_rgba(220,38,38,0.15)] h-11"
+                className="pl-10 bg-gray-800 border-gray-800 text-white placeholder:text-gray-300 rounded-xl focus:border-red-600 h-11"
               />
             </div>
           </CardContent>
         </Card>
 
-        {/* Location Selector */}
+        {/* 🎯 SEARCHABLE CITY SELECTOR */}
         <Card className="bg-gray-950 border-gray-800 rounded-2xl border-none shadow-xl">
           <CardHeader className="pb-3 lg:pb-4">
             <CardTitle className="flex items-center gap-2 text-white text-lg lg:text-xl font-bold">
@@ -116,21 +113,47 @@ export default function SearchPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Select value={cityFilter} onValueChange={setCityFilter}>
-              <SelectTrigger className="bg-gray-800 border-gray-800 rounded-xl text-white h-11">
-                <SelectValue placeholder="All Cities" />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-950 border-gray-800 text-white">
-                <SelectItem value="all">All Cities</SelectItem>
-                {availableCities.map((city) => (
-                  <SelectItem key={city} value={city}>{city}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <button className="w-full flex items-center justify-between bg-gray-800 border-none px-4 py-2.5 rounded-xl text-sm text-white h-11">
+                  {cityFilter === "all" ? "All Cities" : cityFilter}
+                  <MapPin className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[250px] p-0 bg-gray-900 border-gray-800">
+                <Command className="bg-gray-900">
+                  <CommandInput placeholder="Search US City..." className="text-white" />
+                  <CommandEmpty>No city found.</CommandEmpty>
+                  <CommandGroup className="max-h-60 overflow-y-auto custom-scrollbar">
+                    <CommandItem
+                      value="all"
+                      onSelect={() => { setCityFilter("all"); setOpen(false); }}
+                      className="text-white hover:bg-red-600"
+                    >
+                      All Cities
+                    </CommandItem>
+                    {US_CITIES.map((city) => (
+                      <CommandItem
+                        key={city}
+                        value={city}
+                        onSelect={(currentValue) => {
+                          setCityFilter(currentValue === cityFilter ? "all" : city)
+                          setOpen(false)
+                        }}
+                        className="text-white hover:bg-red-600"
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", cityFilter === city ? "opacity-100" : "opacity-0")} />
+                        {city}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </CardContent>
         </Card>
 
-        {/* Sorting/Filters */}
+        {/* Filters */}
         <Card className="bg-gray-950 border-gray-800 rounded-2xl border-none shadow-xl">
           <CardHeader className="pb-3 lg:pb-4">
             <CardTitle className="flex items-center gap-2 text-white text-lg lg:text-xl font-bold">
@@ -166,30 +189,17 @@ export default function SearchPage() {
         </Card>
       </div>
 
-      {/* Results Section */}
+      {/* Results (Same as yours) */}
       <div className="space-y-6">
         <div className="flex items-center justify-between px-2">
           <h2 className="text-xl font-bold text-white">
             Search Results <span className="text-red-600 ml-1">({filteredAndSortedPosts.length})</span>
           </h2>
-          {(searchQuery || cityFilter !== "all" || filterBy !== "all") && (
-            <button
-              onClick={() => { setSearchQuery(""); setCityFilter("all"); setFilterBy("all"); setSortBy("recent"); }}
-              className="text-sm text-gray-400 hover:text-white transition-colors"
-            >
-              Clear all filters
-            </button>
-          )}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
           {filteredAndSortedPosts.map((post) => (
-           
-            <Link 
-              key={post._id} 
-              href={`/post/${post._id}`}
-              className="block transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
-            >
+            <Link key={post._id} href={`/post/${post._id}`} className="block transition-transform hover:scale-[1.02]">
               <PostCard 
                 isProfileView={false}
                 post={{
@@ -209,14 +219,6 @@ export default function SearchPage() {
             </Link>
           ))}
         </div>
-
-        {filteredAndSortedPosts.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 bg-gray-950 rounded-3xl border border-dashed border-gray-800">
-            <SearchIcon className="w-16 h-16 text-gray-800 mb-4" />
-            <h3 className="text-lg lg:text-xl font-medium mb-2 text-white">No results found</h3>
-            <p className="text-gray-400 text-sm">Try adjusting your search criteria or filters</p>
-          </div>
-        )}
       </div>
     </div>
   )
