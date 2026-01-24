@@ -4,6 +4,48 @@ import type { Id } from "./_generated/dataModel";
 
 // --- QUERIES ---
 
+export const getReportedPosts = query({
+  args: { 
+    adminClerkId: v.string() 
+  },
+  handler: async (ctx, args) => {
+    // 1. Get the SECURE identity from the Clerk Token
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthenticated: Please log in.");
+    }
+
+    // 2. Fetch the user from the DB using the SECURE identity subject
+    const user = await ctx.db
+      .query("users")
+      .withIndex("byClerkId", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    // 3. Verify the role in your database
+    if (!user || user.role !== "admin") {
+      throw new Error("Unauthorized: Admin access required.");
+    }
+
+    // 4. If they pass, then return the sensitive data
+    const reportedPosts = await ctx.db
+      .query("posts")
+      .filter((q) => q.eq(q.field("isReported"), true))
+      .order("desc")
+      .collect();
+
+    return await Promise.all(reportedPosts.map(async (post) => {
+      const creator = await ctx.db.get(post.userId);
+      const imageUrl = post.fileId ? await ctx.storage.getUrl(post.fileId) : null;
+      return {
+        ...post,
+        imageUrl,
+        creatorName: creator?.pseudonym || "Anonymous",
+        creatorId: creator?._id,
+      };
+    }));
+  },
+});
+
 export const getPostById = query({
   args: { postId: v.id("posts") },
   handler: async (ctx, args) => {
@@ -135,7 +177,6 @@ export const handleVote = mutation({
   }
 });
 
-// 🎯 RESTORED: This was missing in the last version
 export const reportPost = mutation({
   args: { 
     postId: v.id("posts"),
@@ -159,6 +200,20 @@ export const reportPost = mutation({
       adminId: "system_flag", 
     });
     
+    return { success: true };
+  },
+});
+
+/**
+ * 🎯 ADMIN MUTATION: Clear reports if the post is safe.
+ */
+export const dismissReport = mutation({
+  args: { postId: v.id("posts") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.postId, {
+      isReported: false,
+      reportCount: 0,
+    });
     return { success: true };
   },
 });
