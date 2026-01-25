@@ -7,6 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { generatePseudonym } from "@/lib/generatePseudonym";
+import { ShieldX } from "lucide-react"; // Nice icon for the ban screen
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -14,6 +15,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoaded: clerkLoaded } = useUser();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   
+  // 1. Fetch User Info
   const userInfo = useQuery((api.users as any).readUser, user?.id ? { clerkId: user.id } : "skip");
   const storeUser = useMutation((api.users as any).storeUser);
   
@@ -23,6 +25,29 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { setMounted(true); }, []);
 
+  // 2. BAN GUARD: If user is banned, return early with the Ban Screen
+  if (userInfo?.isBanned) {
+    return (
+      <div className="bg-gray-950 min-h-screen flex flex-col items-center justify-center text-white p-6 text-center">
+        <div className="bg-red-500/10 p-6 rounded-full mb-6">
+          <ShieldX className="w-16 h-16 text-red-500" />
+        </div>
+        <h1 className="text-3xl font-bold mb-3">Access Denied</h1>
+        <p className="text-gray-400 max-w-md mb-8">
+          Your account has been permanently suspended for violating our community standards. 
+          All associated data has been restricted.
+        </p>
+        <button 
+          onClick={() => window.location.href = "mailto:support@yourdomain.com"}
+          className="bg-gray-800 hover:bg-gray-700 px-6 py-2 rounded-lg transition-colors text-sm font-medium"
+        >
+          Appeal Suspension
+        </button>
+      </div>
+    );
+  }
+
+  // 3. SYNC LOGIC: Only store the user if they aren't already in the DB
   useEffect(() => {
     if (isAuthenticated && userInfo === null && !syncAttempted.current && user?.id) {
       syncAttempted.current = true;
@@ -34,6 +59,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, userInfo, storeUser, user?.id]);
 
+  // 4. NAVIGATION GATEKEEPER
   useEffect(() => {
     if (!mounted || !clerkLoaded || authLoading || isSyncing) return;
 
@@ -46,23 +72,27 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
     if (userInfo === undefined || userInfo === null) return;
 
+    // Admin redirect
     if (userInfo.role === "admin") {
       if (pathname === "/") router.replace("/adminDashboard");
       return;
     }
 
+    // Onboarding check
     if (!userInfo.hasCompletedOnboarding) {
       if (pathname !== "/onboarding") router.replace("/onboarding");
       return;
     }
 
+    // Approval check
     if (!userInfo.isApproved) {
       if (pathname !== "/waiting-approval") router.replace("/waiting-approval");
       return;
     }
 
+    // Successful login landing
     const isAtGate = pathname === "/" || pathname === "/onboarding" || pathname === "/waiting-approval";
-    if (isAtGate) router.replace("/submitPost");
+    if (isAtGate) router.replace("/communityFeed");
   }, [clerkLoaded, authLoading, isAuthenticated, userInfo, pathname, router, mounted, isSyncing]);
 
   const isWaiting = !mounted || authLoading || isSyncing || (isAuthenticated && (userInfo === undefined || userInfo === null));
@@ -80,7 +110,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   const shouldShowSidebar = isAuthenticated && userInfo && (userInfo.role === "admin" || (userInfo.isApproved && !["/", "/onboarding", "/waiting-approval"].includes(pathname)));
 
-  // 🎯 HELPER: Determine which tab is active based on the URL
   const getActiveTab = () => {
     if (pathname.includes("admin")) return "admin";
     if (pathname.includes("submit")) return "submit";
@@ -95,7 +124,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         <Sidebar 
           activeTab={getActiveTab()} 
           onTabChange={(tab) => {
-            // 🎯 FIXED: Map the tab ID to your actual folder routes
             if (tab === "admin") router.push("/adminDashboard");
             else if (tab === "feed") router.push("/communityFeed");
             else if (tab === "submit") router.push("/submitPost");

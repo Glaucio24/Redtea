@@ -34,7 +34,6 @@ export const getAllUsersWithVerificationStatus = query({
       .order("desc")
       .collect();
 
-    // 🎯 Maps through users and turns Storage IDs into viewable links
     return await Promise.all(
       users.map(async (u) => ({
         ...u,
@@ -65,31 +64,39 @@ export const approveUser = mutation({
   },
 });
 
-// --- Mutation: Deny and AUTO-DELETE (including all user posts) ---
-export const denyUser = mutation({
-  args: { targetUserId: v.id("users") },
+// --- Mutation: The "Nuclear Option" (Delete User + Posts + Comments) ---
+export const wipeUserCompletely = mutation({
+  args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     await getValidatedAdmin(ctx);
 
-    const userToDelete = await ctx.db.get(args.targetUserId);
+    const userToDelete = await ctx.db.get(args.userId);
     if (!userToDelete) throw new Error("User record not found");
 
-    // 1. Find and Delete all Posts created by this user
+    // 1. Delete all Posts and their Images
     const userPosts = await ctx.db
       .query("posts")
-      .withIndex("byUserId", (q) => q.eq("userId", args.targetUserId))
+      .withIndex("byUserId", (q) => q.eq("userId", args.userId))
       .collect();
 
     for (const post of userPosts) {
-      // Delete post image from storage if it exists
       if (post.fileId) {
         await ctx.storage.delete(post.fileId as Id<"_storage">);
       }
-      // Delete the post record
       await ctx.db.delete(post._id);
     }
 
-    // 2. Delete user's verification files from storage
+    // 2. Delete all Comments (if your table is called "comments")
+    const userComments = await ctx.db
+      .query("comments")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .collect();
+
+    for (const comment of userComments) {
+      await ctx.db.delete(comment._id);
+    }
+
+    // 3. Delete Verification Files
     if (userToDelete.selfieUrl) {
       await ctx.storage.delete(userToDelete.selfieUrl as Id<"_storage">);
     }
@@ -97,9 +104,31 @@ export const denyUser = mutation({
       await ctx.storage.delete(userToDelete.idUrl as Id<"_storage">);
     }
 
-    // 3. Delete the user record from the database
-    await ctx.db.delete(args.targetUserId);
+    // 4. Final Delete
+    await ctx.db.delete(args.userId);
 
-    return { success: true, message: "User rejected and all associated content purged." };
+    return { success: true };
+  },
+});
+
+// --- Mutation: Toggle Ban ---
+export const toggleUserBan = mutation({
+  args: { userId: v.id("users"), isBanned: v.boolean() },
+  handler: async (ctx, args) => {
+    await getValidatedAdmin(ctx);
+    await ctx.db.patch(args.userId, { isBanned: args.isBanned });
+    return { success: true };
+  },
+});
+
+// --- Query: Get all posts for a specific user ---
+export const getUserPosts = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await getValidatedAdmin(ctx);
+    return await ctx.db
+      .query("posts")
+      .withIndex("byUserId", (q) => q.eq("userId", args.userId))
+      .collect();
   },
 });

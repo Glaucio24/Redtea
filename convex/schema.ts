@@ -10,6 +10,7 @@ export default defineSchema({
     selfieUrl: v.optional(v.string()),
     idUrl: v.optional(v.string()),
     isApproved: v.boolean(),
+    isBanned: v.optional(v.boolean()), // 🎯 ADDED THIS
     hasCompletedOnboarding: v.boolean(),
     isSubscribed: v.optional(v.boolean()),
     subscriptionPlan: v.optional(v.string()),
@@ -34,7 +35,6 @@ export default defineSchema({
         userId: v.id("users"),
         voteType: v.union(v.literal("green"), v.literal("red")),
     })),
-    // 🎯 Fields for reporting
     isReported: v.optional(v.boolean()),
     reportCount: v.optional(v.number()),
     createdAt: v.number(),

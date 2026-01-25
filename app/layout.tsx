@@ -29,7 +29,10 @@ export default function RootLayout({
   return (
     <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
       <html lang="en" suppressHydrationWarning>
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900`}>
+        <body 
+          className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900`}
+          suppressHydrationWarning
+        >
           <ConvexClientProvider>
             <ClientLayout>
               {children}

@@ -9,24 +9,20 @@ export const getReportedPosts = query({
     adminClerkId: v.string() 
   },
   handler: async (ctx, args) => {
-    // 1. Get the SECURE identity from the Clerk Token
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Unauthenticated: Please log in.");
     }
 
-    // 2. Fetch the user from the DB using the SECURE identity subject
     const user = await ctx.db
       .query("users")
       .withIndex("byClerkId", (q) => q.eq("clerkId", identity.subject))
       .unique();
 
-    // 3. Verify the role in your database
     if (!user || user.role !== "admin") {
       throw new Error("Unauthorized: Admin access required.");
     }
 
-    // 4. If they pass, then return the sensitive data
     const reportedPosts = await ctx.db
       .query("posts")
       .filter((q) => q.eq(q.field("isReported"), true))
@@ -204,9 +200,6 @@ export const reportPost = mutation({
   },
 });
 
-/**
- * 🎯 ADMIN MUTATION: Clear reports if the post is safe.
- */
 export const dismissReport = mutation({
   args: { postId: v.id("posts") },
   handler: async (ctx, args) => {
@@ -218,11 +211,30 @@ export const dismissReport = mutation({
   },
 });
 
+/**
+ * 🎯 UPDATED: userId is now optional so Admin can delete without it.
+ */
 export const deleteUserPost = mutation({
-  args: { postId: v.id("posts"), userId: v.id("users") },
+  args: { 
+    postId: v.id("posts"), 
+    userId: v.optional(v.id("users")) 
+  },
   handler: async (ctx, args) => {
     const post = await ctx.db.get(args.postId);
-    if (!post || post.userId !== args.userId) throw new Error("Unauthorized");
+    if (!post) throw new Error("Post not found");
+
+    const identity = await ctx.auth.getUserIdentity();
+    const requestingUser = identity 
+      ? await ctx.db.query("users").withIndex("byClerkId", (q) => q.eq("clerkId", identity.subject)).unique()
+      : null;
+
+    const isAdmin = requestingUser?.role === "admin";
+
+    // Allow if Admin OR if the user is the owner
+    if (!isAdmin && post.userId !== args.userId) {
+      throw new Error("Unauthorized");
+    }
+
     if (post.fileId) await ctx.storage.delete(post.fileId as Id<"_storage">);
     await ctx.db.delete(args.postId);
     return { success: true };
