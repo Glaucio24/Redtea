@@ -11,24 +11,41 @@ export const readUser = query({
   },
 });
 
-// 🎯 FIX: Updated to count flags the user GAVE to others
+// 🎯 New: Fetch current user for admin checks
+export const currentUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    return await ctx.db
+      .query("users")
+      .withIndex("byClerkId", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+  },
+});
+
+// 🎯 New: Get ANY user by their Convex ID (for Profile Pages)
+export const getUserById = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
+  },
+});
+
 export const getUserStats = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    // 1. Get posts owned by the user
     const myPosts = await ctx.db
       .query("posts")
       .withIndex("byUserId", (q) => q.eq("userId", args.userId))
       .collect();
 
-    // 2. Scan ALL posts to see what this user has voted on
     const allPosts = await ctx.db.query("posts").collect();
     
     let totalGreenGiven = 0;
     let totalRedGiven = 0;
 
     allPosts.forEach((post) => {
-      // Check the voters array inside each post
       const userVote = post.voters?.find((voter: any) => voter.userId === args.userId);
       if (userVote) {
         if (userVote.voteType === "green") totalGreenGiven++;
@@ -38,8 +55,8 @@ export const getUserStats = query({
 
     return {
       postCount: myPosts.length,
-      greenFlags: totalGreenGiven, // This is now flags YOU gave
-      redFlags: totalRedGiven,     // This is now flags YOU gave
+      greenFlags: totalGreenGiven,
+      redFlags: totalRedGiven,
       posts: myPosts
     };
   },
@@ -114,6 +131,32 @@ export const deleteUser = mutation({
       if (user.idUrl) try { await ctx.storage.delete(user.idUrl as any); } catch {}
       await ctx.db.delete(user._id);
     }
+  },
+});
+
+// 🎯 New: The Auto-Delete mutation for rejected users
+export const rejectAndSoftDeleteUser = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return;
+
+    // 1. Cleanup Storage images if they exist
+    if (user.selfieUrl) try { await ctx.storage.delete(user.selfieUrl as any); } catch {}
+    if (user.idUrl) try { await ctx.storage.delete(user.idUrl as any); } catch {}
+
+    // 2. Delete all posts by this user
+    const posts = await ctx.db
+      .query("posts")
+      .withIndex("byUserId", (q) => q.eq("userId", args.userId))
+      .collect();
+    
+    for (const post of posts) {
+      await ctx.db.delete(post._id);
+    }
+
+    // 3. Delete the user record
+    await ctx.db.delete(args.userId);
   },
 });
 

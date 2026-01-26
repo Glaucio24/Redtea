@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs"
 import { api } from "@/convex/_generated/api"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import type { Id } from "@/convex/_generated/dataModel"
-import Link from "next/link" // 🎯 Added for viewing posts
+import Link from "next/link" 
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -31,8 +31,8 @@ import {
   Search, 
   ShieldAlert,
   FileText,
-  Ban,         // 🎯 Added
-  ExternalLink // 🎯 Added
+  Ban,         
+  ExternalLink 
 } from "lucide-react"
 
 // --- Lightbox Component ---
@@ -55,7 +55,7 @@ type PendingUser = {
   idUrl?: string
   createdAt: number
   isApproved: boolean
-  isBanned?: boolean // 🎯 Added to type
+  isBanned?: boolean 
   verificationStatus: "pending" | "approved" | "rejected" | "none"
   role: string
 }
@@ -82,9 +82,9 @@ export default function AdminDashboard() {
 
   // --- MUTATIONS ---
   const approveUser = useMutation(api.admin.approveUser)
-  const wipeUserCompletely = useMutation(api.admin.wipeUserCompletely) // 🎯 Renamed from denyUser to match your backend
+  const wipeUserCompletely = useMutation(api.admin.wipeUserCompletely) 
   const deletePost = useMutation(api.posts.deleteUserPost)
-  const toggleBan = useMutation(api.admin.toggleUserBan) // 🎯 Added
+  const toggleBan = useMutation(api.admin.toggleUserBan) 
 
   const handleApproveVerification = async (userId: string) => {
     try {
@@ -96,7 +96,6 @@ export default function AdminDashboard() {
   const handleRejectVerification = async (userId: string) => {
     if (!confirm("Reject and PERMANENTLY delete this user and all their data?")) return;
     try {
-      // 🎯 Using the wipe mutation to fulfill your "auto-delete once rejected" requirement
       await wipeUserCompletely({ userId: userId as Id<"users"> })
       toast.success("User and data deleted")
     } catch (err) { 
@@ -295,7 +294,6 @@ export default function AdminDashboard() {
                            <span className="text-orange-400 font-bold underline">{post.reportCount || 1} Reports</span>
                         </div>
                         <div className="flex gap-3 pt-4 border-t border-gray-700/50">
-                           {/* 🎯 Added View Post Button */}
                            <Button variant="outline" size="sm" asChild className="bg-transparent border-gray-600 hover:bg-gray-700">
                              <Link href={`/posts/${post._id}`} target="_blank">
                                <ExternalLink className="w-4 h-4 mr-2" /> View Post
@@ -316,7 +314,7 @@ export default function AdminDashboard() {
              </div>
           </TabsContent>
 
-          {/* --- USER REGISTRY (GOD VIEW) --- */}
+          {/* --- USER REGISTRY --- */}
           <TabsContent value="registry" className="space-y-6 outline-none">
             <div className="relative mb-6">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -350,7 +348,6 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-300">{u.email}</td>
                         <td className="px-6 py-4">
-                          {/* 🎯 Added Ban Badge */}
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary" className="text-[10px] uppercase">
                               {u.role}
@@ -364,7 +361,18 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
-                            {/* 🎯 Added Ban/Unban Toggle */}
+                            {/* 🎯 View Profile Button Added Here */}
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              asChild
+                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                            >
+                              <Link href={`/profile/${u._id}`}>
+                                <ExternalLink className="w-4 h-4" />
+                              </Link>
+                            </Button>
+
                             <Button 
                               variant="ghost" 
                               size="sm" 
@@ -375,9 +383,10 @@ export default function AdminDashboard() {
                               <Ban className="w-4 h-4" />
                             </Button>
                             
-                            <Button variant="ghost" size="sm" className="text-blue-400 hover:text-blue-300 hover:bg-blue-400/10">
+                            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-300">
                               <FileText className="w-4 h-4" />
                             </Button>
+
                             <Button 
                               variant="ghost" 
                               size="sm" 
