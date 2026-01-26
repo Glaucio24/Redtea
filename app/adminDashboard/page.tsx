@@ -173,14 +173,14 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-gray-800 max-w-2xl p-1">
-            <TabsTrigger value="verification" className="data-[state=active]:bg-blue-600">
+          <TabsList className="grid w-full grid-cols-3 bg-gray-500 max-w-2xl p-1">
+            <TabsTrigger value="verification" className="data-[state=active]:bg-blue-600 text-white">
               <ShieldAlert className="w-4 h-4 mr-2" /> Verification
             </TabsTrigger>
-            <TabsTrigger value="reports" className="data-[state=active]:bg-red-600">
+            <TabsTrigger value="reports" className="data-[state=active]:bg-red-600 text-white">
               <Flag className="w-4 h-4 mr-2" /> Reports {reportedPosts && reportedPosts.length > 0 && `(${reportedPosts.length})`}
             </TabsTrigger>
-            <TabsTrigger value="registry" className="data-[state=active]:bg-green-600">
+            <TabsTrigger value="registry" className="data-[state=active]:bg-green-600 text-white">
               <Users className="w-4 h-4 mr-2" /> User Registry
             </TabsTrigger>
           </TabsList>
