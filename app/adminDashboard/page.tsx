@@ -294,8 +294,9 @@ export default function AdminDashboard() {
                            <span className="text-orange-400 font-bold underline">{post.reportCount || 1} Reports</span>
                         </div>
                         <div className="flex gap-3 pt-4 border-t border-gray-700/50">
+                           {/* 🎯 FIXED LINK: Changed from /posts/ to /post/ to match your folder structure */}
                            <Button variant="outline" size="sm" asChild className="bg-transparent border-gray-600 hover:bg-gray-700">
-                             <Link href={`/posts/${post._id}`} target="_blank">
+                             <Link href={`/post/${post._id}`}>
                                <ExternalLink className="w-4 h-4 mr-2" /> View Post
                              </Link>
                            </Button>
@@ -361,7 +362,6 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
-                            {/* 🎯 View Profile Button Added Here */}
                             <Button 
                               variant="ghost" 
                               size="sm" 

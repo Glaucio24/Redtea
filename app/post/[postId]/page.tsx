@@ -11,7 +11,9 @@ import type { Id } from "@/convex/_generated/dataModel";
 
 export default function PostDetailPage() {
   const params = useParams();
+  // 🎯 Make sure your folder is named [postId] not [id]
   const postId = params.postId as Id<"posts">;
+  
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -52,7 +54,6 @@ export default function PostDetailPage() {
   }
 
   return (
-    /* 🎯 bg-transparent to match the rest of your app */
     <div className="min-h-screen bg-transparent p-3 sm:p-4 lg:p-10">
       <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 items-start">
         
@@ -70,7 +71,7 @@ export default function PostDetailPage() {
               greenFlags: post.greenFlags,
               redFlags: post.redFlags,
               replies: comments.length,
-              timestamp: new Date(post.createdAt).toLocaleDateString(),
+              timestamp: new Date(post._creationTime).toLocaleDateString(),
             }}
           />
         </div>
@@ -78,7 +79,6 @@ export default function PostDetailPage() {
         {/* Right Side: Discussion Section */}
         <div className="flex flex-col gap-5 sm:gap-6 mt-4 md:mt-0">
           <header className="px-1">
-            {/* 🎯 Shrunk text for 360px mobile screens */}
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-1">Discussion</h1>
             <p className="text-gray-400 text-[11px] sm:text-sm lg:text-base">Share your feedback</p>
           </header>
@@ -88,7 +88,6 @@ export default function PostDetailPage() {
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="Write a reply..."
-              /* 🎯 Adjusted padding and font for mobile */
               className="w-full bg-gray-950 border border-gray-800 text-white p-3 sm:p-4 rounded-2xl min-h-[100px] sm:min-h-[120px] focus:ring-2 focus:ring-red-600/20 focus:border-red-600 transition-all outline-none text-xs sm:text-sm resize-none"
             />
             <button
@@ -108,9 +107,8 @@ export default function PostDetailPage() {
             {comments.map((c) => (
               <div key={c._id} className="bg-gray-950 border border-gray-800/40 p-4 sm:p-5 rounded-2xl">
                 <div className="flex justify-between items-center mb-2 sm:mb-3">
-                  {/* 🎯 Extra small text for narrow phones */}
                   <span className="text-red-500 font-bold text-[10px] sm:text-xs uppercase tracking-wider">{c.userPseudonym}</span>
-                  <span className="text-gray-600 text-[9px] sm:text-[11px]">{new Date(c.createdAt).toLocaleDateString()}</span>
+                  <span className="text-gray-600 text-[9px] sm:text-[11px]">{new Date(c._creationTime).toLocaleDateString()}</span>
                 </div>
                 <p className="text-gray-300 text-[11px] sm:text-sm leading-relaxed">{c.content}</p>
               </div>
