@@ -16,13 +16,15 @@ export default function CommunityFeedPage() {
       </div>
 
       {!posts ? (
-        <div className="grid grid-cols-2 md:grid-cols-2 gap-2 sm:gap-4 lg:gap-6">
-          {[1, 2, 3, 4].map((i) => (
+        /* Skeleton Grid matches the 3-column layout */
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 lg:gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <Skeleton key={i} className="h-[240px] w-full rounded-2xl bg-gray-800/50" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-2 gap-x-2 gap-y-3 sm:gap-4 lg:gap-6 pt-0">
+        /* Real Post Grid: 2 columns on mobile, 3 columns on large screens */
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-2 gap-y-3 sm:gap-4 lg:gap-6 pt-0">
           {posts.map((post) => (
             <PostCard 
               key={post._id}
