@@ -10,6 +10,7 @@ import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
+import { cn } from "@/lib/utils";
 
 interface PostCardProps {
   post: {
@@ -26,9 +27,10 @@ interface PostCardProps {
     userId: string; 
   };
   isProfileView?: boolean;
+  hideFooter?: boolean; // Used in [postId] page to hide redundancy
 }
 
-export function PostCard({ post, isProfileView = false }: PostCardProps) {
+export function PostCard({ post, isProfileView = false, hideFooter = false }: PostCardProps) {
   const { user } = useUser();
   const [isReporting, setIsReporting] = useState(false);
   const [showReportReasons, setShowReportReasons] = useState(false);
@@ -126,7 +128,7 @@ export function PostCard({ post, isProfileView = false }: PostCardProps) {
         </div>
       )}
 
-      {/* 🎯 THE FIX: Clickable Image Header (Redirects to post page) */}
+      {/* 🎯 IMAGE HEADER WITH DESCRIPTION OVERLAY */}
       <Link href={`/post/${post.id}`} className="block relative aspect-square w-full bg-gray-800 m-0 p-0 overflow-hidden shrink-0 group/img">
         <Image 
           src={post.image} 
@@ -135,42 +137,53 @@ export function PostCard({ post, isProfileView = false }: PostCardProps) {
           className="object-cover block transition-transform duration-500 group-hover/img:scale-110" 
           unoptimized 
         />
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gray-950 via-gray-950/40 to-transparent p-3">
+        {/* 🎯 Gradient Overlay for Text Visibility */}
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/20 to-transparent" />
+        
+        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
           <h3 className="text-sm sm:text-lg font-bold text-white truncate leading-tight">{post.name}, {post.age}</h3>
-          <p className="text-[10px] sm:text-xs text-gray-300 truncate tracking-wide">{post.city}</p>
+          <p className="text-[10px] sm:text-xs text-gray-400 truncate tracking-wide mb-2">{post.city}</p>
+          
+          {/* 🎯 DESCRIPTION INSIDE PICTURE (Hidden when hideFooter is true) */}
+          {!hideFooter && (
+            <p className="text-gray-200 text-[11px] sm:text-xs leading-snug line-clamp-2 opacity-90 group-hover/img:opacity-100 transition-opacity">
+               {post.context}
+            </p>
+          )}
         </div>
       </Link>
 
-      {/* Content Section */}
-      <div className="p-3 pt-2 sm:p-4 sm:pt-3 flex flex-col flex-1 justify-between space-y-2.5">
-        <p className="text-gray-300 text-[11px] sm:text-sm leading-snug line-clamp-2">{post.context}</p>
-        
-        <div className="flex items-center justify-between pt-2 border-t border-gray-800/40 mt-auto">
-          <div className="flex gap-2 sm:gap-4">
-            {/* GREEN FLAG BUTTON */}
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onVote("green"); }} 
-              className="flex items-center gap-1 group/btn cursor-pointer relative z-30"
-            >
-              <div className="p-1.5 rounded-full bg-green-500/10 text-green-500 group-hover/btn:bg-green-500 group-hover/btn:text-white transition-colors">
-                <CheckCircle2 size={16} />
-              </div>
-              <span className="text-[11px] sm:text-sm font-bold text-green-500">{displayGreen}</span>
-            </button>
+      {/* VOTING FOOTER */}
+      <div className={cn(
+        "p-3 sm:px-4 flex items-center justify-between mt-auto",
+        !hideFooter && "border-t border-gray-800/40" // Only show border if not hidden
+      )}>
+        <div className="flex gap-2 sm:gap-4">
+          {/* GREEN FLAG BUTTON */}
+          <button 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onVote("green"); }} 
+            className="flex items-center gap-1 group/btn cursor-pointer relative z-30"
+          >
+            <div className="p-1.5 rounded-full bg-green-500/10 text-green-500 group-hover/btn:bg-green-500 group-hover/btn:text-white transition-colors">
+              <CheckCircle2 size={16} />
+            </div>
+            <span className="text-[11px] sm:text-sm font-bold text-green-500">{displayGreen}</span>
+          </button>
 
-            {/* RED FLAG BUTTON */}
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onVote("red"); }} 
-              className="flex items-center gap-1 group/btn cursor-pointer relative z-30"
-            >
-              <div className="p-1.5 rounded-full bg-red-500/10 text-red-500 group-hover/btn:bg-red-500 group-hover/btn:text-white transition-colors">
-                <AlertCircle size={16} />
-              </div>
-              <span className="text-[11px] sm:text-sm font-bold text-red-500">{displayRed}</span>
-            </button>
-          </div>
+          {/* RED FLAG BUTTON */}
+          <button 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onVote("red"); }} 
+            className="flex items-center gap-1 group/btn cursor-pointer relative z-30"
+          >
+            <div className="p-1.5 rounded-full bg-red-500/10 text-red-500 group-hover/btn:bg-red-500 group-hover/btn:text-white transition-colors">
+              <AlertCircle size={16} />
+            </div>
+            <span className="text-[11px] sm:text-sm font-bold text-red-500">{displayRed}</span>
+          </button>
+        </div>
 
-          {/* 🎯 REPLIES ICON (Also redirects to post page) */}
+        {/* 🎯 REPLIES ICON (Hidden on detail page via hideFooter prop) */}
+        {!hideFooter && (
           <Link 
             href={`/post/${post.id}`}
             className="flex items-center gap-1 text-gray-500 hover:text-white transition-colors shrink-0"
@@ -178,7 +191,7 @@ export function PostCard({ post, isProfileView = false }: PostCardProps) {
             <MessageCircle size={16} />
             <span className="text-[11px] sm:text-sm font-bold">{displayReplies}</span>
           </Link>
-        </div>
+        )}
       </div>
     </Card>
   );
