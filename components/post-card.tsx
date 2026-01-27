@@ -46,6 +46,9 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
   const displayRed = livePost?.redFlags ?? post.redFlags;
   const displayReplies = livePost?.repliesCount ?? post.replies;
 
+  // Identify if the viewer is an admin
+  const isAdmin = currentUser?.role === "admin";
+
   const handleReportAction = async (reason: string) => {
     setIsReporting(true);
     try {
@@ -56,6 +59,20 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
       toast.error("Failed to report");
     } finally {
       setIsReporting(false);
+    }
+  };
+
+  const handleAdminDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("ADMIN ACTION: Permanently delete this post and all associated data?")) return;
+    
+    try {
+      await deleteMutation({ postId: post.id as Id<"posts"> });
+      toast.success("Post deleted by Admin");
+    } catch (err) {
+      toast.error("Delete failed");
+      console.error(err);
     }
   };
 
@@ -77,28 +94,33 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
       
       {/* ACTION BUTTONS (REPORT / DELETE) */}
       <div className="absolute top-2 right-2 z-30 flex gap-2">
-        {isProfileView ? (
+        {/* DELETE ICON: Show if it's the user's own profile OR if the current user is an admin */}
+        {(isProfileView || isAdmin) && (
           <button 
-            onClick={(e) => {
+            onClick={isProfileView ? (e) => {
               e.preventDefault();
               e.stopPropagation();
               if(confirm("Delete this post?")) {
                 deleteMutation({ postId: post.id as Id<"posts">, userId: currentUser!._id });
                 toast.success("Post deleted");
               }
-            }} 
-            className="p-2 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white rounded-full transition-all backdrop-blur-md border border-red-600/30"
+            } : handleAdminDelete} 
+            className="p-2 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white rounded-full transition-all backdrop-blur-md border border-red-600/30 shadow-lg"
+            title="Delete Post"
           >
             <Trash2 size={14} />
           </button>
-        ) : (
+        )}
+
+        {/* REPORT ICON: Hide if we are looking at our own profile, but show even for admins so they can test/see reports */}
+        {!isProfileView && (
           <button 
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               setShowReportReasons(!showReportReasons);
             }} 
-            className={`p-2 rounded-full transition-all backdrop-blur-md border border-white/10 z-40 ${showReportReasons ? 'bg-red-600 text-white' : 'bg-gray-950/40 text-gray-300 hover:bg-red-600'}`}
+            className={`p-2 rounded-full transition-all backdrop-blur-md border border-white/10 z-40 shadow-lg ${showReportReasons ? 'bg-red-600 text-white' : 'bg-gray-950/40 text-gray-300 hover:bg-red-600'}`}
           >
             {showReportReasons ? <X size={14} /> : <Flag size={14} />}
           </button>

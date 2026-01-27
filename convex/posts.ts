@@ -230,13 +230,44 @@ export const deleteUserPost = mutation({
 
     const isAdmin = requestingUser?.role === "admin";
 
-    // Allow if Admin OR if the user is the owner
+    // 1. Security Check
     if (!isAdmin && post.userId !== args.userId) {
       throw new Error("Unauthorized");
     }
 
-    if (post.fileId) await ctx.storage.delete(post.fileId as Id<"_storage">);
+    // 2. Clean up associated data (The Professional Way)
+    
+    // Delete comments linked to this post
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("byPostId", (q) => q.eq("postId", args.postId))
+      .collect();
+    for (const comment of comments) {
+      await ctx.db.delete(comment._id);
+    }
+
+    // Delete the image from storage
+    if (post.fileId) {
+      try {
+        await ctx.storage.delete(post.fileId as Id<"_storage">);
+      } catch (e) {
+        console.error("Storage delete failed, file might not exist");
+      }
+    }
+
+    // Log the admin action if it was an admin
+    if (isAdmin) {
+      await ctx.db.insert("adminActions", {
+        adminId: requestingUser?._id as string,
+        actionType: "admin_delete_post",
+        targetPostId: args.postId,
+        timestamp: Date.now(),
+      });
+    }
+
+    // 3. Finally, delete the post
     await ctx.db.delete(args.postId);
+    
     return { success: true };
   },
 });
