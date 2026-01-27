@@ -15,7 +15,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoaded: clerkLoaded } = useUser();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   
-  // 1. Fetch User Info
   const userInfo = useQuery((api.users as any).readUser, user?.id ? { clerkId: user.id } : "skip");
   const storeUser = useMutation((api.users as any).storeUser);
   
@@ -25,7 +24,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // 2. BAN GUARD
   if (userInfo?.isBanned) {
     return (
       <div className="bg-gray-950 min-h-screen flex flex-col items-center justify-center text-white p-6 text-center">
@@ -47,7 +45,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // 3. SYNC LOGIC
   useEffect(() => {
     if (isAuthenticated && userInfo === null && !syncAttempted.current && user?.id) {
       syncAttempted.current = true;
@@ -59,34 +56,27 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, userInfo, storeUser, user?.id]);
 
-  // 4. NAVIGATION GATEKEEPER
   useEffect(() => {
     if (!mounted || !clerkLoaded || authLoading || isSyncing) return;
-
     if (!isAuthenticated) {
       if (pathname !== "/" && !pathname.startsWith("/sign-in") && !pathname.startsWith("/sign-up")) {
         router.replace("/");
       }
       return;
     }
-
     if (userInfo === undefined || userInfo === null) return;
-
     if (userInfo.role === "admin") {
       if (pathname === "/") router.replace("/adminDashboard");
       return;
     }
-
     if (!userInfo.hasCompletedOnboarding) {
       if (pathname !== "/onboarding") router.replace("/onboarding");
       return;
     }
-
     if (!userInfo.isApproved) {
       if (pathname !== "/waiting-approval") router.replace("/waiting-approval");
       return;
     }
-
     const isAtGate = pathname === "/" || pathname === "/onboarding" || pathname === "/waiting-approval";
     if (isAtGate) router.replace("/communityFeed");
   }, [clerkLoaded, authLoading, isAuthenticated, userInfo, pathname, router, mounted, isSyncing]);
@@ -115,7 +105,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-900">
+    /* ADDED items-start HERE */
+    <div className="flex min-h-screen bg-gray-900 items-start">
       {shouldShowSidebar && (
         <Sidebar 
           activeTab={getActiveTab()} 
@@ -124,13 +115,13 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             else if (tab === "feed") router.push("/communityFeed");
             else if (tab === "submit") router.push("/submitPost");
             else if (tab === "search") router.push("/search");
-            // FIXED: Path now uses dynamic [id]
             else if (tab === "profile" && userInfo?._id) router.push(`/profile/${userInfo._id}`);
           }}
           isAdmin={userInfo?.role === "admin"}
         />
       )}
-      <main className={`flex-1 overflow-auto ${shouldShowSidebar ? "border-l border-gray-800" : ""}`}>
+      {/* REMOVED overflow-auto to let window scroll normally */}
+      <main className={`flex-1 w-full ${shouldShowSidebar ? "border-l border-gray-800" : ""}`}>
         {children}
       </main>
     </div>

@@ -31,6 +31,7 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
 
   return (
     <>
+      {/* Mobile Toggle - Sticky at top right */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         className="fixed top-4 right-4 z-50 lg:hidden bg-gray-800 p-2 rounded-md border border-gray-700 text-white hover:bg-gray-700"
@@ -39,6 +40,7 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
         {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
       </button>
 
+      {/* Overlay for mobile */}
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
@@ -46,10 +48,11 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
         />
       )}
 
+      {/* Sidebar Container */}
       <div
         className={`
-          fixed lg:static
-          top-0 left-0
+          fixed lg:sticky lg:top-0
+          left-0
           h-screen
           w-64
           bg-gray-800
@@ -60,7 +63,7 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
-        <div className="p-6 border-b border-gray-700">
+        <div className="p-6 border-b border-gray-700 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10">
               <img
@@ -73,6 +76,7 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
           </div>
         </div>
 
+        {/* Navigation area is scrollable if tabs overflow, but sidebar stays fixed */}
         <nav className="flex-1 p-4 overflow-y-auto">
           <div className="space-y-2">
             {tabs.map((tab) => {
@@ -124,7 +128,7 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
           </div>
         </nav>
 
-        <div className="p-4 border-t border-gray-700 space-y-4">
+        <div className="p-4 border-t border-gray-700 space-y-4 shrink-0">
           <Button
             onClick={() => signOut({ redirectUrl: "/" })}
             variant="ghost"

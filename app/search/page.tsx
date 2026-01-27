@@ -41,7 +41,6 @@ export default function SearchPage() {
       filtered = filtered.filter((post) => post.city === cityFilter)
     }
 
-    // ... (rest of your filter logic stays the same)
     if (filterBy !== "all") {
       filtered = filtered.filter((post) => {
         const total = post.greenFlags + post.redFlags
@@ -49,7 +48,6 @@ export default function SearchPage() {
         switch (filterBy) {
           case "green-majority": return greenRatio > 0.6
           case "red-majority": return greenRatio < 0.4
-          case "controversial": return greenRatio >= 0.4 && greenRatio <= 0.6 && total > 5
           default: return true
         }
       })
@@ -80,7 +78,7 @@ export default function SearchPage() {
     <div className="p-4 lg:p-8 max-w-7xl mx-auto text-white bg-transparent">
       <div className="mb-6 lg:mb-8 px-2">
         <h1 className="text-2xl lg:text-3xl font-bold mb-2">Search & Filter</h1>
-        <p className="text-gray-400 text-sm lg:text-base">Find specific posts and filter by community feedback</p>
+        <p className="text-gray-400 text-sm lg:text-base font-medium">Find specific posts and filter by community feedback</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
@@ -104,7 +102,6 @@ export default function SearchPage() {
           </CardContent>
         </Card>
 
-        {/* 🎯 SEARCHABLE CITY SELECTOR */}
         <Card className="bg-gray-950 border-gray-800 rounded-2xl border-none shadow-xl">
           <CardHeader className="pb-3 lg:pb-4">
             <CardTitle className="flex items-center gap-2 text-white text-lg lg:text-xl font-bold">
@@ -153,7 +150,6 @@ export default function SearchPage() {
           </CardContent>
         </Card>
 
-        {/* Filters */}
         <Card className="bg-gray-950 border-gray-800 rounded-2xl border-none shadow-xl">
           <CardHeader className="pb-3 lg:pb-4">
             <CardTitle className="flex items-center gap-2 text-white text-lg lg:text-xl font-bold">
@@ -182,14 +178,12 @@ export default function SearchPage() {
                 <SelectItem value="all">All Posts</SelectItem>
                 <SelectItem value="green-majority">Green Flag Majority</SelectItem>
                 <SelectItem value="red-majority">Red Flag Majority</SelectItem>
-                <SelectItem value="controversial">Controversial</SelectItem>
               </SelectContent>
             </Select>
           </CardContent>
         </Card>
       </div>
 
-      {/* Results (Same as yours) */}
       <div className="space-y-6">
         <div className="flex items-center justify-between px-2">
           <h2 className="text-xl font-bold text-white">
@@ -197,7 +191,7 @@ export default function SearchPage() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {filteredAndSortedPosts.map((post) => (
             <Link key={post._id} href={`/post/${post._id}`} className="block transition-transform hover:scale-[1.02]">
               <PostCard 
