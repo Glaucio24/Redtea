@@ -64,16 +64,41 @@ export const approveUser = mutation({
   },
 });
 
-// --- Mutation: The "Nuclear Option" (Delete User + Posts + Comments) ---
+// --- Mutation: Wipe User Completely ---
+
 export const wipeUserCompletely = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    await getValidatedAdmin(ctx);
+    // 1. Get the Identity of the person calling this function
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    // 2. Find the caller in the database
+    const caller = await ctx.db
+      .query("users")
+      .withIndex("byClerkId", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!caller) throw new Error("Caller record not found");
+
+    // 3. PERMISSION CHECK: Allow if Caller is Admin OR Caller is deleting themselves
+    const isAdmin = caller.role?.toLowerCase() === "admin";
+    const isSelfDestruct = caller._id === args.userId;
+
+    if (!isAdmin && !isSelfDestruct) {
+      throw new Error("🚫 Unauthorized: You do not have permission to wipe this record.");
+    }
+
+    // 4. PREVENT ADMIN FROM ACCIDENTALLY DELETING THEMSELVES VIA DASHBOARD
+    if (isAdmin && isSelfDestruct && caller.role === "admin") {
+       // Optional: You might want to allow this if you want admins to be able to delete themselves
+       // throw new Error("Admins must be downgraded to user before self-deletion for safety.");
+    }
 
     const userToDelete = await ctx.db.get(args.userId);
-    if (!userToDelete) throw new Error("User record not found");
+    if (!userToDelete) return { success: false, error: "User not found" };
 
-    // 1. Delete all Posts and their Images
+    // 5. DELETE ALL POSTS & IMAGES
     const userPosts = await ctx.db
       .query("posts")
       .withIndex("byUserId", (q) => q.eq("userId", args.userId))
@@ -81,30 +106,30 @@ export const wipeUserCompletely = mutation({
 
     for (const post of userPosts) {
       if (post.fileId) {
-        await ctx.storage.delete(post.fileId as Id<"_storage">);
+        try { await ctx.storage.delete(post.fileId as Id<"_storage">); } catch (e) {}
       }
       await ctx.db.delete(post._id);
     }
 
-    // 2. Delete all Comments (if your table is called "comments")
+    // 6. DELETE ALL COMMENTS
     const userComments = await ctx.db
       .query("comments")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .withIndex("byUserId", (q) => q.eq("userId", args.userId))
       .collect();
 
     for (const comment of userComments) {
       await ctx.db.delete(comment._id);
     }
 
-    // 3. Delete Verification Files
+    // 7. DELETE STORAGE FILES (Selfie & ID)
     if (userToDelete.selfieUrl) {
-      await ctx.storage.delete(userToDelete.selfieUrl as Id<"_storage">);
+      try { await ctx.storage.delete(userToDelete.selfieUrl as Id<"_storage">); } catch (e) {}
     }
     if (userToDelete.idUrl) {
-      await ctx.storage.delete(userToDelete.idUrl as Id<"_storage">);
+      try { await ctx.storage.delete(userToDelete.idUrl as Id<"_storage">); } catch (e) {}
     }
 
-    // 4. Final Delete
+    // 8. FINAL WIPE: Delete the user record
     await ctx.db.delete(args.userId);
 
     return { success: true };

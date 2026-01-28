@@ -17,15 +17,13 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoaded: clerkLoaded } = useUser();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   
-  // 1. Hooks always run at the top
-  const userInfo = useQuery((api.users as any).readUser, user?.id ? { clerkId: user.id } : "skip");
-  const storeUser = useMutation((api.users as any).storeUser);
+  const userInfo = useQuery(api.users.readUser, user?.id ? { clerkId: user.id } : "skip");
+  const storeUser = useMutation(api.users.storeUser);
   
   const [mounted, setMounted] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const syncAttempted = useRef(false);
 
-  // 2. Fix Hydration: Only run logic after the component has mounted in the browser
   useEffect(() => { 
     setMounted(true); 
   }, []);
@@ -46,9 +44,11 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!mounted || !clerkLoaded || authLoading || isSyncing) return;
     
-    // Do not redirect if banned; let the layout render the Banned UI instead
-    if (userInfo?.isBanned) return;
+    // 1. STABILITY CHECK: If userInfo is undefined (loading from Convex), 
+    // do nothing. This prevents the "blink" redirect to onboarding while data refreshes.
+    if (userInfo === undefined) return;
 
+    // 2. Auth Check
     if (!isAuthenticated) {
       if (pathname !== "/" && !pathname.startsWith("/sign-in") && !pathname.startsWith("/sign-up")) {
         router.replace("/");
@@ -56,12 +56,21 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (userInfo === undefined || userInfo === null) return;
-
-    if (userInfo.role === "admin") {
-      if (pathname === "/") router.replace("/adminDashboard");
-      return;
+    // 3. ADMIN BYPASS (The Fix for the Admin redirect)
+    if (userInfo?.role === "admin") {
+      const isAtGate = pathname === "/" || pathname === "/onboarding" || pathname === "/waiting-approval";
+      if (isAtGate) {
+        router.replace("/adminDashboard");
+      }
+      return; // Stop here: Admins skip all onboarding/approval checks below
     }
+
+    // 4. BANNED CHECK
+    if (userInfo?.isBanned) return;
+
+    // 5. REGULAR USER ONBOARDING/APPROVAL FLOW
+    if (userInfo === null) return; 
+
     if (!userInfo.hasCompletedOnboarding) {
       if (pathname !== "/onboarding") router.replace("/onboarding");
       return;
@@ -75,7 +84,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     if (isAtGate) router.replace("/communityFeed");
   }, [clerkLoaded, authLoading, isAuthenticated, userInfo, pathname, router, mounted, isSyncing]);
 
-  // 3. Handle Initial Loading / Hydration
   if (!mounted || !clerkLoaded || authLoading) {
     return (
       <div className="bg-gray-900 min-h-screen flex flex-col items-center justify-center text-white">
@@ -84,7 +92,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // 4. Handle Banned State UI
   if (userInfo?.isBanned) {
     return (
       <div className="bg-gray-950 min-h-screen flex flex-col items-center justify-center text-white p-6 text-center">
@@ -93,16 +100,9 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         </div>
         <h1 className="text-3xl font-bold mb-3">Access Denied</h1>
         <p className="text-gray-400 max-w-md mb-8">
-          Your account has been permanently suspended for violating our community standards. 
-          All associated data has been restricted.
+          Your account has been permanently suspended.
         </p>
         <div className="flex flex-col gap-3 w-full max-w-xs">
-          <Button 
-            onClick={() => window.location.href = "mailto:support@yourdomain.com"}
-            className="bg-red-600 hover:bg-red-700 text-white rounded-full h-12 font-bold"
-          >
-            Appeal Suspension
-          </Button>
           <Button 
             onClick={() => signOut().then(() => router.push("/"))}
             variant="ghost"
@@ -115,7 +115,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // 5. App Layout logic
   const shouldShowSidebar = isAuthenticated && userInfo && (userInfo.role === "admin" || (userInfo.isApproved && !["/", "/onboarding", "/waiting-approval"].includes(pathname)));
 
   const getActiveTab = () => {

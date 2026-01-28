@@ -50,6 +50,7 @@ function Lightbox({ imageUrl, onClose }: { imageUrl: string; onClose: () => void
 
 type PendingUser = {
   _id: Id<"users">
+  clerkId: string;
   name?: string
   pseudonym?: string
   email: string
@@ -60,7 +61,6 @@ type PendingUser = {
   isBanned?: boolean 
   verificationStatus: "pending" | "approved" | "rejected" | "none"
   role: string
-  // Added for your commitment logic
   banCount?: number
 }
 
@@ -97,16 +97,31 @@ export default function AdminDashboard() {
     } catch (err) { console.error(err) }
   }
 
-  const handleRejectVerification = async (userId: string) => {
-    if (!confirm("Reject and PERMANENTLY delete this user and all their data?")) return;
+  // --- FIXED NUCLEAR OPTION ---
+  const handleRejectVerification = async (userId: Id<"users">, targetClerkId: string) => {
+    if (!confirm("Reject and PERMANENTLY delete this user from Database AND Authentication?")) return;
+
+    const toastId = toast.loading("Purging system records...");
+
     try {
-      await wipeUserCompletely({ userId: userId as Id<"users"> })
-      toast.success("User and data deleted")
-    } catch (err) { 
-      toast.error("Failed to delete user")
-      console.error(err) 
+      // 1. Delete from Clerk (Auth) - Stops the auto-recreate loop
+      const clerkResponse = await fetch("/api/delete-clerk-user", {
+        method: "POST",
+        body: JSON.stringify({ clerkId: targetClerkId }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!clerkResponse.ok) throw new Error("Auth account deletion failed");
+
+      // 2. Delete from Convex (Database)
+      await wipeUserCompletely({ userId });
+
+      toast.success("User and data permanently deleted", { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error("Deletion failed. User may still exist.", { id: toastId });
     }
-  }
+  };
 
   const handleToggleBan = async (userId: Id<"users">, currentStatus: boolean) => {
     const action = currentStatus ? "unban" : "ban";
@@ -250,7 +265,7 @@ export default function AdminDashboard() {
                             <Button className="bg-blue-600 hover:bg-blue-700 flex-1 h-10 font-bold text-xs uppercase" onClick={() => handleApproveVerification(verification._id)} disabled={verification.verificationStatus === "approved"}>
                                 <CheckCircle className="w-4 h-4 mr-2" /> Approve
                             </Button>
-                            <Button variant="ghost" className="hover:bg-red-600/10 text-red-500 hover:text-red-400 flex-1 h-10 font-bold text-xs uppercase border border-red-500/20" onClick={() => handleRejectVerification(verification._id)}>
+                            <Button variant="ghost" className="hover:bg-red-600/10 text-red-500 hover:text-red-400 flex-1 h-10 font-bold text-xs uppercase border border-red-500/20" onClick={() => handleRejectVerification(verification._id, verification.clerkId)}>
                                 <XCircle className="w-4 h-4 mr-2" /> Reject
                             </Button>
                         </div>
@@ -385,6 +400,7 @@ export default function AdminDashboard() {
                   <tbody className="divide-y divide-gray-800/50">
                     {filteredRegistry?.map((u) => (
                       <tr key={u._id} className="hover:bg-white/[0.02] transition-colors group">
+                        {/* COLUMN 1: Profile */}
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-4">
                              <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold border border-gray-700">
@@ -397,6 +413,8 @@ export default function AdminDashboard() {
                              </div>
                           </div>
                         </td>
+
+                        {/* COLUMN 2: Status */}
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="text-[9px] uppercase font-black border-gray-700 text-gray-400">
@@ -413,33 +431,44 @@ export default function AdminDashboard() {
                             )}
                           </div>
                         </td>
+
+                        {/* COLUMN 3: Actions */}
                         <td className="px-8 py-6 text-right">
-                          <div className="flex justify-end gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
+                          <div className="flex justify-end gap-2">
                             <Button variant="ghost" size="sm" asChild className="text-blue-400 hover:bg-blue-400/10 rounded-lg">
                               <Link href={`/profile/${u._id}`}><ExternalLink className="w-4 h-4" /></Link>
                             </Button>
 
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className={u.isBanned ? "text-green-400 hover:bg-green-400/10" : "text-orange-400 hover:bg-orange-400/10"}
-                              onClick={() => handleToggleBan(u._id, !!u.isBanned)}
-                            >
-                              <Ban className="w-4 h-4" />
-                            </Button>
-                            
-                            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-white hover:bg-gray-800">
-                              <Scale className="w-4 h-4" />
-                            </Button>
+                            {/* Safety Check: Only show Ban/Delete if user is NOT the current Admin */}
+                            {clerkUser?.id !== u.clerkId ? (
+                              <>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className={u.isBanned ? "text-green-400 hover:bg-green-400/10" : "text-orange-400 hover:bg-orange-400/10"}
+                                  onClick={() => handleToggleBan(u._id, !!u.isBanned)}
+                                >
+                                  <Ban className="w-4 h-4" />
+                                </Button>
+                                
+                                <Button variant="ghost" size="sm" className="text-gray-500 hover:text-white hover:bg-gray-800">
+                                  <Scale className="w-4 h-4" />
+                                </Button>
 
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-red-500 hover:bg-red-500/10"
-                              onClick={() => handleRejectVerification(u._id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-red-500 hover:bg-red-500/10"
+                                  onClick={() => handleRejectVerification(u._id, u.clerkId)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Badge variant="outline" className="text-[9px] uppercase font-black border-gray-700 text-gray-500 px-3 py-1">
+                                Active Session (You)
+                              </Badge>
+                            )}
                           </div>
                         </td>
                       </tr>
