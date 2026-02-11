@@ -4,6 +4,13 @@ import { NextRequest } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { generatePseudonym } from '@/lib/generatePseudonym';
 
+// ✅ Added interface to replace 'any'
+interface ClerkUserWebhookData {
+  email_addresses?: Array<{ email_address: string }>;
+  first_name?: string;
+  last_name?: string;
+}
+
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(req: NextRequest) {
@@ -16,18 +23,15 @@ export async function POST(req: NextRequest) {
 
     switch (eventType) {
       case 'user.created': {
+        const data = evt.data as unknown as ClerkUserWebhookData;
         const userData = {
           clerkId: id,
-          email: (evt.data as any).email_addresses?.[0]?.email_address ?? "",
-          name: `${(evt.data as any).first_name ?? ''} ${(evt.data as any).last_name ?? ''}`.trim(),
+          email: data.email_addresses?.[0]?.email_address ?? "",
+          name: `${data.first_name ?? ''} ${data.last_name ?? ''}`.trim(),
           pseudonym: generatePseudonym(id),
           hasCompletedOnboarding: false,
           isApproved: false,
           createdAt: Date.now(),
-          selfieUrl: undefined,
-          idUrl: undefined,
-          isSubscribed: undefined,
-          subscriptionPlan: undefined,
         };
 
         await convex.mutation(api.users.createUser, userData);
@@ -35,9 +39,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'user.deleted': {
-        // 🎯 THE FIX: Calling 'deleteUser' as a public mutation
         await convex.mutation(api.users.deleteUser, { clerkId: id });
-        console.log('🗑️ User removed from Convex:', id);
         break;
       }
     }

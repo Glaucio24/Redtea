@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+import { Id } from "./_generated/dataModel";
 
 // --- QUERIES ---
 
@@ -8,7 +8,7 @@ export const getReportedPosts = query({
   args: { 
     adminClerkId: v.string() 
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Unauthenticated: Please log in.");
@@ -155,18 +155,28 @@ export const handleVote = mutation({
     const post = await ctx.db.get(args.postId);
     if (!post) throw new Error("Post not found");
 
-    let { voters, greenFlags, redFlags } = post;
+    const voters = [...post.voters];
+    let { greenFlags, redFlags } = post;
+    
     const existingVoteIndex = voters.findIndex(voter => voter.userId === args.userId);
     
     if (existingVoteIndex !== -1) {
       const existingVote = voters[existingVoteIndex];
       voters.splice(existingVoteIndex, 1);
-      existingVote.voteType === "green" ? greenFlags-- : redFlags--;
+      if (existingVote.voteType === "green") {
+        greenFlags -= 1;
+      } else {
+        redFlags -= 1;
+      }
     }
     
     if (args.voteType !== null) {
-      voters.push({ userId: args.userId as Id<"users">, voteType: args.voteType });
-      args.voteType === "green" ? greenFlags++ : redFlags++;
+      voters.push({ userId: args.userId, voteType: args.voteType });
+      if (args.voteType === "green") {
+        greenFlags += 1;
+      } else {
+        redFlags += 1;
+      }
     }
 
     await ctx.db.patch(args.postId, { greenFlags, redFlags, voters });
@@ -211,9 +221,6 @@ export const dismissReport = mutation({
   },
 });
 
-/**
- * 🎯 UPDATED: userId is now optional so Admin can delete without it.
- */
 export const deleteUserPost = mutation({
   args: { 
     postId: v.id("posts"), 
@@ -230,14 +237,10 @@ export const deleteUserPost = mutation({
 
     const isAdmin = requestingUser?.role === "admin";
 
-    // 1. Security Check
     if (!isAdmin && post.userId !== args.userId) {
       throw new Error("Unauthorized");
     }
 
-    // 2. Clean up associated data (The Professional Way)
-    
-    // Delete comments linked to this post
     const comments = await ctx.db
       .query("comments")
       .withIndex("byPostId", (q) => q.eq("postId", args.postId))
@@ -246,26 +249,23 @@ export const deleteUserPost = mutation({
       await ctx.db.delete(comment._id);
     }
 
-    // Delete the image from storage
     if (post.fileId) {
       try {
         await ctx.storage.delete(post.fileId as Id<"_storage">);
       } catch (e) {
-        console.error("Storage delete failed, file might not exist");
+        console.error("Storage delete failed", e);
       }
     }
 
-    // Log the admin action if it was an admin
-    if (isAdmin) {
+    if (isAdmin && requestingUser) {
       await ctx.db.insert("adminActions", {
-        adminId: requestingUser?._id as string,
+        adminId: requestingUser._id,
         actionType: "admin_delete_post",
         targetPostId: args.postId,
         timestamp: Date.now(),
       });
     }
 
-    // 3. Finally, delete the post
     await ctx.db.delete(args.postId);
     
     return { success: true };

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 export const readUser = query({
   args: { clerkId: v.string() },
@@ -11,7 +12,6 @@ export const readUser = query({
   },
 });
 
-// 🎯 New: Fetch current user for admin checks
 export const currentUser = query({
   args: {},
   handler: async (ctx) => {
@@ -24,7 +24,6 @@ export const currentUser = query({
   },
 });
 
-// 🎯 New: Get ANY user by their Convex ID (for Profile Pages)
 export const getUserById = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -46,10 +45,14 @@ export const getUserStats = query({
     let totalRedGiven = 0;
 
     allPosts.forEach((post) => {
-      const userVote = post.voters?.find((voter: any) => voter.userId === args.userId);
+      // ✅ Removed 'any' - using inferred types from post.voters
+      const userVote = post.voters?.find((voter) => voter.userId === args.userId);
       if (userVote) {
-        if (userVote.voteType === "green") totalGreenGiven++;
-        if (userVote.voteType === "red") totalRedGiven++;
+        if (userVote.voteType === "green") {
+          totalGreenGiven += 1;
+        } else if (userVote.voteType === "red") {
+          totalRedGiven += 1;
+        }
       }
     });
 
@@ -127,25 +130,33 @@ export const deleteUser = mutation({
       .withIndex("byClerkId", (q) => q.eq("clerkId", args.clerkId))
       .unique();
     if (user) {
-      if (user.selfieUrl) try { await ctx.storage.delete(user.selfieUrl as any); } catch {}
-      if (user.idUrl) try { await ctx.storage.delete(user.idUrl as any); } catch {}
+      // ✅ Explicit casting to Id<"_storage">
+      if (user.selfieUrl) {
+        try { await ctx.storage.delete(user.selfieUrl as Id<"_storage">); } catch (e) { console.error(e); }
+      }
+      if (user.idUrl) {
+        try { await ctx.storage.delete(user.idUrl as Id<"_storage">); } catch (e) { console.error(e); }
+      }
       await ctx.db.delete(user._id);
     }
   },
 });
 
-// 🎯 New: The Auto-Delete mutation for rejected users
+
+
 export const rejectAndSoftDeleteUser = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user) return;
 
-    // 1. Cleanup Storage images if they exist
-    if (user.selfieUrl) try { await ctx.storage.delete(user.selfieUrl as any); } catch {}
-    if (user.idUrl) try { await ctx.storage.delete(user.idUrl as any); } catch {}
+    if (user.selfieUrl) {
+      try { await ctx.storage.delete(user.selfieUrl as Id<"_storage">); } catch (e) { console.error(e); }
+    }
+    if (user.idUrl) {
+      try { await ctx.storage.delete(user.idUrl as Id<"_storage">); } catch (e) { console.error(e); }
+    }
 
-    // 2. Delete all posts by this user
     const posts = await ctx.db
       .query("posts")
       .withIndex("byUserId", (q) => q.eq("userId", args.userId))
@@ -155,7 +166,6 @@ export const rejectAndSoftDeleteUser = mutation({
       await ctx.db.delete(post._id);
     }
 
-    // 3. Delete the user record
     await ctx.db.delete(args.userId);
   },
 });
@@ -172,6 +182,7 @@ export const finishOnboarding = mutation({
       .withIndex("byClerkId", (q) => q.eq("clerkId", args.clerkId))
       .unique();
     if (!user) throw new Error("User not found");
+    
     await ctx.db.patch(user._id, {
       hasCompletedOnboarding: true,
       verificationStatus: "pending",
