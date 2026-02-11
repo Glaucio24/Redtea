@@ -4,6 +4,7 @@ import { Home, Plus, Settings, Menu, X, LogOut, Search, User as UserIcon } from 
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { useClerk } from "@clerk/nextjs"
+import Image from "next/image"
 
 interface SidebarProps {
   activeTab: string
@@ -65,11 +66,14 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
       >
         <div className="p-6 border-b border-gray-700 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10">
-              <img
+            <div className="relative w-10 h-10">
+              {/* ✅ FIXED: Replaced <img> with <Image /> to prevent build errors */}
+              <Image
                 src="/redtea.png"
                 alt="Red Tea Logo"
-                className="w-full h-full object-contain"
+                fill
+                className="object-contain"
+                priority // Ensures the logo loads immediately
               />
             </div>
             <h1 className="text-xl font-bold text-white">Red Tea</h1>

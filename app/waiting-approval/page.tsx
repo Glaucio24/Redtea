@@ -8,34 +8,28 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Loader2, XCircle, Clock, CheckCircle2, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function WaitingApprovalPage() {
   const { user, isLoaded: clerkLoaded } = useUser();
   const router = useRouter();
   
-  // Fetch user info from Convex in real-time
   const userInfo = useQuery(api.users.readUser, user ? { clerkId: user.id } : 'skip');
-  
   const [isDenied, setIsDenied] = useState(false);
 
   useEffect(() => {
-    // Wait until the query has finished loading
     if (userInfo === undefined) return;
     
-    // 🛑 DENIED: Record deleted or marked as rejected
     if (userInfo === null) {
       setIsDenied(true);
       return;
     }
 
-    // ✅ APPROVED
     if (userInfo.isApproved) {
-      // Small delay so they see the success state
       setTimeout(() => router.push('/dashboard'), 1500); 
     }
   }, [userInfo, router]);
 
-  // Loading Clerk or Initial DB Fetch
   if (!clerkLoaded || userInfo === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0f172a]">
@@ -46,13 +40,19 @@ export default function WaitingApprovalPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-[#0f172a]">
-      {/* Glow Effect */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-red-900/10 blur-[100px] rounded-full" />
 
       <Card className="w-full max-w-md text-center bg-gray-900 border-gray-800 shadow-2xl relative z-10 rounded-3xl p-4">
         <CardHeader>
           <div className="flex justify-center mb-4">
-             <img src="/redtea.png" alt="RedTea" className="h-16 w-16 object-contain" />
+             <Image 
+               src="/redtea.png" 
+               alt="RedTea Logo" 
+               width={64} 
+               height={64} 
+               className="object-contain"
+               priority 
+             />
           </div>
           <CardTitle className="text-2xl font-bold text-white">
             {isDenied ? 'Application Declined' : 'Account Under Review'}

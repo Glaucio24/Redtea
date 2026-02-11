@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Upload, Loader2, X, Image as ImageIcon, MapPin, Check } from "lucide-react";
-import { US_CITIES } from "@/lib/constants"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
-import { cn } from "@/lib/utils"
+import { Upload, Loader2, MapPin, Check } from "lucide-react";
+import { US_CITIES } from "@/lib/constants";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 export default function SubmitPostPage() {
   const router = useRouter();
@@ -25,7 +25,7 @@ export default function SubmitPostPage() {
   const [city, setCity] = useState("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -80,22 +80,38 @@ export default function SubmitPostPage() {
             />
           </div>
 
-          {/* Image Area (Same as yours) */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-400">Photo</label>
-            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={(e) => setSelectedImage(e.target.files?.[0] || null)} />
-            <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed rounded-2xl p-8 bg-gray-800/30 border-gray-800 cursor-pointer">
-              {!selectedImage ? <Upload className="mx-auto text-gray-500" /> : <p className="text-green-500 text-center">{selectedImage.name}</p>}
+            <input 
+              type="file" 
+              accept="image/*" 
+              ref={fileInputRef} 
+              className="hidden" 
+              onChange={(e) => setSelectedImage(e.target.files?.[0] || null)} 
+            />
+            <div 
+              onClick={() => fileInputRef.current?.click()} 
+              className="border-2 border-dashed rounded-2xl p-8 bg-gray-800/30 border-gray-800 cursor-pointer"
+            >
+              {!selectedImage ? (
+                <Upload className="mx-auto text-gray-500" />
+              ) : (
+                <p className="text-green-500 text-center">{selectedImage.name}</p>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-400">Age</label>
-              <Input type="number" value={age} onChange={(e) => setAge(e.target.value)} className="bg-gray-800 border-gray-700 text-white h-12" />
+              <Input 
+                type="number" 
+                value={age} 
+                onChange={(e) => setAge(e.target.value)} 
+                className="bg-gray-800 border-gray-700 text-white h-12" 
+              />
             </div>
 
-            {/* 🎯 SEARCHABLE CITY PICKER */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-400">City</label>
               <Popover open={open} onOpenChange={setOpen}>
@@ -111,7 +127,12 @@ export default function SubmitPostPage() {
                     <CommandEmpty>No city found.</CommandEmpty>
                     <CommandGroup className="max-h-60 overflow-y-auto">
                       {US_CITIES.map((c) => (
-                        <CommandItem key={c} value={c} onSelect={(val) => { setCity(val); setOpen(false); }} className="text-white">
+                        <CommandItem 
+                          key={c} 
+                          value={c} 
+                          onSelect={(val) => { setCity(val); setOpen(false); }} 
+                          className="text-white"
+                        >
                           <Check className={cn("mr-2 h-4 w-4", city === c ? "opacity-100" : "opacity-0")} />
                           {c}
                         </CommandItem>
@@ -125,7 +146,12 @@ export default function SubmitPostPage() {
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-400">Story</label>
-            <Textarea value={text} onChange={(e) => setText(e.target.value)} className="bg-gray-800 border-gray-700 text-white" rows={5} />
+            <Textarea 
+              value={text} 
+              onChange={(e) => setText(e.target.value)} 
+              className="bg-gray-800 border-gray-700 text-white" 
+              rows={5} 
+            />
           </div>
 
           <Button type="submit" disabled={isSubmitting} className="w-full bg-red-600 hover:bg-red-700 py-6 rounded-2xl">
