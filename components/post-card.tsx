@@ -27,7 +27,7 @@ interface PostCardProps {
     userId: string; 
   };
   isProfileView?: boolean;
-  hideFooter?: boolean; // Used in [postId] page to hide redundancy
+  hideFooter?: boolean;
 }
 
 export function PostCard({ post, isProfileView = false, hideFooter = false }: PostCardProps) {
@@ -46,7 +46,6 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
   const displayRed = livePost?.redFlags ?? post.redFlags;
   const displayReplies = livePost?.repliesCount ?? post.replies;
 
-  // Identify if the viewer is an admin
   const isAdmin = currentUser?.role === "admin";
 
   const handleReportAction = async (reason: string) => {
@@ -55,7 +54,7 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
       await reportMutation({ postId: post.id as Id<"posts">, reason });
       toast.success("Report Submitted");
       setShowReportReasons(false);
-    } catch (err) {
+    } catch { // ✅ FIXED: Removed unused 'err'
       toast.error("Failed to report");
     } finally {
       setIsReporting(false);
@@ -70,7 +69,7 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
     try {
       await deleteMutation({ postId: post.id as Id<"posts"> });
       toast.success("Post deleted by Admin");
-    } catch (err) {
+    } catch (err: unknown) { // ✅ FIXED: Changed 'any' to 'unknown'
       toast.error("Delete failed");
       console.error(err);
     }
@@ -84,7 +83,7 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
         userId: currentUser._id,
         voteType: type,
       });
-    } catch (err) {
+    } catch { // ✅ FIXED: Removed unused 'err'
       toast.error("Vote failed");
     }
   };
@@ -92,9 +91,7 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
   return (
     <Card className="overflow-hidden rounded-2xl bg-gray-950 border-gray-800 shadow-2xl transition-all hover:border-gray-700 h-full flex flex-col p-0 border-none group relative">
       
-      {/* ACTION BUTTONS (REPORT / DELETE) */}
       <div className="absolute top-2 right-2 z-30 flex gap-2">
-        {/* DELETE ICON: Show if it's the user's own profile OR if the current user is an admin */}
         {(isProfileView || isAdmin) && (
           <button 
             onClick={isProfileView ? (e) => {
@@ -112,7 +109,6 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
           </button>
         )}
 
-        {/* REPORT ICON: Hide if we are looking at our own profile, but show even for admins so they can test/see reports */}
         {!isProfileView && (
           <button 
             onClick={(e) => {
@@ -127,7 +123,6 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
         )}
       </div>
 
-      {/* REPORT REASONS OVERLAY */}
       {!isProfileView && showReportReasons && (
         <div className="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center">
           <p className="text-white font-bold mb-3 text-sm">Why are you reporting this?</p>
@@ -150,7 +145,6 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
         </div>
       )}
 
-      {/* 🎯 IMAGE HEADER WITH DESCRIPTION OVERLAY */}
       <Link href={`/post/${post.id}`} className="block relative aspect-square w-full bg-gray-800 m-0 p-0 overflow-hidden shrink-0 group/img">
         <Image 
           src={post.image} 
@@ -159,14 +153,12 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
           className="object-cover block transition-transform duration-500 group-hover/img:scale-110" 
           unoptimized 
         />
-        {/* 🎯 Gradient Overlay for Text Visibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/20 to-transparent" />
         
         <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
           <h3 className="text-sm sm:text-lg font-bold text-white truncate leading-tight">{post.name}, {post.age}</h3>
           <p className="text-[10px] sm:text-xs text-gray-400 truncate tracking-wide mb-2">{post.city}</p>
           
-          {/* 🎯 DESCRIPTION INSIDE PICTURE (Hidden when hideFooter is true) */}
           {!hideFooter && (
             <p className="text-gray-200 text-[11px] sm:text-xs leading-snug line-clamp-2 opacity-90 group-hover/img:opacity-100 transition-opacity">
                {post.context}
@@ -175,13 +167,11 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
         </div>
       </Link>
 
-      {/* VOTING FOOTER */}
       <div className={cn(
         "p-3 sm:px-4 flex items-center justify-between mt-auto",
-        !hideFooter && "border-t border-gray-800/40" // Only show border if not hidden
+        !hideFooter && "border-t border-gray-800/40"
       )}>
         <div className="flex gap-2 sm:gap-4">
-          {/* GREEN FLAG BUTTON */}
           <button 
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onVote("green"); }} 
             className="flex items-center gap-1 group/btn cursor-pointer relative z-30"
@@ -192,7 +182,6 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
             <span className="text-[11px] sm:text-sm font-bold text-green-500">{displayGreen}</span>
           </button>
 
-          {/* RED FLAG BUTTON */}
           <button 
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onVote("red"); }} 
             className="flex items-center gap-1 group/btn cursor-pointer relative z-30"
@@ -204,7 +193,6 @@ export function PostCard({ post, isProfileView = false, hideFooter = false }: Po
           </button>
         </div>
 
-        {/* 🎯 REPLIES ICON (Hidden on detail page via hideFooter prop) */}
         {!hideFooter && (
           <Link 
             href={`/post/${post.id}`}

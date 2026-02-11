@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, use } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
   User, MessageSquare, ThumbsUp, Flag, Loader2, 
-  Trash2, ShieldAlert, Bell, CreditCard, Crown, 
+  Trash2, ShieldAlert, Bell, CreditCard,
   Settings 
 } from "lucide-react"
 import { useQuery, useMutation } from "convex/react"
@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Id } from "@/convex/_generated/dataModel"
 
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
@@ -36,7 +37,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
   const [activeTab, setActiveTab] = useState<"overview" | "notifications" | "subscription" | "settings">("overview")
 
-  const userData = useQuery(api.users.getUserById, { userId: profileId as any })
+  const userData = useQuery(api.users.getUserById, { userId: profileId as Id<"users"> })
   const currentUser = useQuery(api.users.readUser, clerkUser?.id ? { clerkId: clerkUser.id } : "skip")
   const stats = useQuery(api.users.getUserStats, userData ? { userId: userData._id } : "skip")
   const myPosts = useQuery(api.posts.getUserPosts, userData ? { userId: userData._id } : "skip")
@@ -68,13 +69,9 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     const tid = toast.loading("Initiating permanent wipe sequence...");
     
     try {
-      // --- STEP 1: WIPE CONVEX DATABASE FIRST ---
-      // We do this while the Auth session is still valid
       await wipeUserCompletely({ userId: userData._id });
-      
       toast.loading("Database purged. Finalizing Auth removal...", { id: tid });
 
-      // --- STEP 2: DELETE FROM CLERK (AUTH) SECOND ---
       const clerkResponse = await fetch("/api/delete-clerk-user", {
         method: "POST",
         body: JSON.stringify({ clerkId: userData.clerkId }),
@@ -82,22 +79,21 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
       });
 
       if (!clerkResponse.ok) {
-        throw new Error("Convex wiped, but Clerk deletion failed. Account may still exist in Clerk.");
+        throw new Error("Convex wiped, but Clerk deletion failed.");
       }
 
       toast.success("Identity destroyed.", { id: tid });
 
-      // --- STEP 3: SESSION CLEANUP ---
       if (isOwnProfile) {
         await signOut();
-        // Use window.location to force a full browser clear
         window.location.href = "/"; 
       } else {
         router.push("/adminDashboard");
       }
-    } catch (err: any) {
+    } catch (err: unknown) { 
       console.error("Purge Error:", err);
-      toast.error(err.message || "Wipe interrupted.", { id: tid });
+      const errorMessage = err instanceof Error ? err.message : "Wipe interrupted.";
+      toast.error(errorMessage, { id: tid });
     }
   }
 
@@ -124,7 +120,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
              <AlertDialogHeader>
                <AlertDialogTitle className="uppercase font-black text-red-500">Nuclear Option</AlertDialogTitle>
                <AlertDialogDescription className="text-gray-400 font-medium leading-relaxed">
-                 This will permanently delete this user's login account and all associated posts, comments, and images. This action cannot be reversed.
+                 This will permanently delete this user&apos;s login account and all associated posts, comments, and images. This action cannot be reversed.
                </AlertDialogDescription>
              </AlertDialogHeader>
              <AlertDialogFooter>
@@ -132,7 +128,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                <AlertDialogAction onClick={handlePurge} className="bg-red-600 rounded-full font-bold px-6">Wipe User</AlertDialogAction>
              </AlertDialogFooter>
            </AlertDialogContent>
-         </AlertDialog>
+          </AlertDialog>
         )}
       </div>
 
@@ -207,7 +203,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                     <AlertDialogHeader>
                     <AlertDialogTitle className="uppercase font-black text-red-500">Confirm Self-Destruct?</AlertDialogTitle>
                     <AlertDialogDescription className="text-gray-400 font-medium">
-                        Deleting your account will purge your login and permanently remove every post and comment you've made. This cannot be undone.
+                        Deleting your account will purge your login and permanently remove every post and comment you&apos;ve made. This cannot be undone.
                     </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
