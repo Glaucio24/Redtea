@@ -1,6 +1,3 @@
-import { api } from "@/convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
-
 
 // 200 adjectives
 const adjectives = [

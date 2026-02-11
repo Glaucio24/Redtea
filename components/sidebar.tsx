@@ -31,7 +31,7 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile Toggle - Sticky at top right */}
+      {/* Mobile Toggle */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         className="fixed top-4 right-4 z-50 lg:hidden bg-gray-800 p-2 rounded-md border border-gray-700 text-white hover:bg-gray-700"
@@ -76,7 +76,6 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
           </div>
         </div>
 
-        {/* Navigation area is scrollable if tabs overflow, but sidebar stays fixed */}
         <nav className="flex-1 p-4 overflow-y-auto">
           <div className="space-y-2">
             {tabs.map((tab) => {
@@ -108,21 +107,24 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
                 <p className="text-xs text-gray-500 mb-2 px-3 uppercase tracking-widest font-bold">
                   Administration
                 </p>
-                {adminTabs.map((tab) => (
-                  <Button
-                    key={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
-                    variant={activeTab === tab.id ? "secondary" : "ghost"}
-                    className={`w-full justify-start gap-3 h-12 ${
-                      activeTab === tab.id
-                        ? "bg-orange-600/20 text-orange-300 border border-orange-600/40"
-                        : "text-gray-300 hover:text-white hover:bg-gray-700"
-                    }`}
-                  >
-                    <tab.icon className="w-5 h-5" />
-                    <span className="font-medium">{tab.label}</span>
-                  </Button>
-                ))}
+                {adminTabs.map((tab) => {
+                   const AdminIcon = tab.icon
+                   return (
+                    <Button
+                      key={tab.id}
+                      onClick={() => handleTabChange(tab.id)}
+                      variant={activeTab === tab.id ? "secondary" : "ghost"}
+                      className={`w-full justify-start gap-3 h-12 ${
+                        activeTab === tab.id
+                          ? "bg-orange-600/20 text-orange-300 border border-orange-600/40"
+                          : "text-gray-300 hover:text-white hover:bg-gray-700"
+                      }`}
+                    >
+                      <AdminIcon className="w-5 h-5" />
+                      <span className="font-medium">{tab.label}</span>
+                    </Button>
+                   )
+                })}
               </div>
             )}
           </div>
